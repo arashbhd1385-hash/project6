@@ -1,16 +1,8 @@
-<<<<<<< HEAD
-# Install script for directory: E:/sdl
-
-# Set the install prefix
-if(NOT DEFINED CMAKE_INSTALL_PREFIX)
-  set(CMAKE_INSTALL_PREFIX "C:/Program Files (x86)/sdl")
-=======
-# Install script for directory: D:/laptop/cpp/project6
+# Install script for directory: C:/Users/Microsoft/CLionProjects/FOP/project6/project6
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
   set(CMAKE_INSTALL_PREFIX "C:/Program Files (x86)/project6")
->>>>>>> 9af78bd5b0dafa8f672b553933e2b6a76269f539
 endif()
 string(REGEX REPLACE "/$" "" CMAKE_INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
@@ -40,26 +32,30 @@ if(NOT DEFINED CMAKE_CROSSCOMPILING)
   set(CMAKE_CROSSCOMPILING "FALSE")
 endif()
 
-# Set default install directory permissions.
+# Set path to fallback-tool for dependency-resolution.
 if(NOT DEFINED CMAKE_OBJDUMP)
-<<<<<<< HEAD
-  set(CMAKE_OBJDUMP "C:/MinGW/MinGW/bin/objdump.exe")
-=======
   set(CMAKE_OBJDUMP "C:/MinGW/bin/objdump.exe")
->>>>>>> 9af78bd5b0dafa8f672b553933e2b6a76269f539
-endif()
-
-if(CMAKE_INSTALL_COMPONENT)
-  set(CMAKE_INSTALL_MANIFEST "install_manifest_${CMAKE_INSTALL_COMPONENT}.txt")
-else()
-  set(CMAKE_INSTALL_MANIFEST "install_manifest.txt")
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-<<<<<<< HEAD
-file(WRITE "E:/sdl/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
-=======
-file(WRITE "D:/laptop/cpp/project6/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
->>>>>>> 9af78bd5b0dafa8f672b553933e2b6a76269f539
+if(CMAKE_INSTALL_LOCAL_ONLY)
+  file(WRITE "C:/Users/Microsoft/CLionProjects/FOP/project6/project6/cmake-build-debug/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
+endif()
+if(CMAKE_INSTALL_COMPONENT)
+  if(CMAKE_INSTALL_COMPONENT MATCHES "^[a-zA-Z0-9_.+-]+$")
+    set(CMAKE_INSTALL_MANIFEST "install_manifest_${CMAKE_INSTALL_COMPONENT}.txt")
+  else()
+    string(MD5 CMAKE_INST_COMP_HASH "${CMAKE_INSTALL_COMPONENT}")
+    set(CMAKE_INSTALL_MANIFEST "install_manifest_${CMAKE_INST_COMP_HASH}.txt")
+    unset(CMAKE_INST_COMP_HASH)
+  endif()
+else()
+  set(CMAKE_INSTALL_MANIFEST "install_manifest.txt")
+endif()
+
+if(NOT CMAKE_INSTALL_LOCAL_ONLY)
+  file(WRITE "C:/Users/Microsoft/CLionProjects/FOP/project6/project6/cmake-build-debug/${CMAKE_INSTALL_MANIFEST}"
+     "${CMAKE_INSTALL_MANIFEST_CONTENT}")
+endif()

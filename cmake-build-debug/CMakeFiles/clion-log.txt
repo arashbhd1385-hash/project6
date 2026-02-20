@@ -1,7 +1,0 @@
-"E:\CLion 2022.2\bin\cmake\win\bin\cmake.exe" -DCMAKE_BUILD_TYPE=Debug "-DCMAKE_MAKE_PROGRAM=E:/CLion 2022.2/bin/ninja/win/ninja.exe" -G Ninja -S E:\sdl -B E:\sdl\cmake-build-debug
-CMake Error at CMakeLists.txt:2:
-  Parse error.  Expected a command name, got unquoted argument with text
-  "<<<<<<<".
-
-
--- Configuring incomplete, errors occurred!

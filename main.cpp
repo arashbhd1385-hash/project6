@@ -797,3 +797,103 @@ void Block_insertBetween(Block *block, Block *above, Block *below) {
     block->rect.x = (above ? above->rect.x : (below ? below->rect.x : block->rect.x));
     if (above) { block->rect.y = above->rect.y + above->rect.h; }
 }
+
+void Block_updateBelowPositions(Block *block) {
+    if (block->next) {
+        block->next->rect.x = block->rect.x;
+        block->next->rect.y = block->rect.y + block->rect.h;
+        Block_updateBelowPositions(block->next);
+    }
+}
+
+Block *Block_getFirstInChain(Block *block) {
+    Block *current = block;
+    while (current->prev) { current = current->prev; }
+    return current;
+}
+
+Block *Block_getLastInChain(Block *block) {
+    Block *current = block;
+    while (current->next) { current = current->next; }
+    return current;
+}
+
+int Block_getChainLength(Block *block) {
+    int count = 1;
+    Block *current = block;
+    while (current->next) {
+        count++;
+        current = current->next;
+    }
+    return count;
+}
+
+void Block_shiftChainDown(Block *block, int amount) {
+    if (block->next) {
+        block->next->rect.y += amount;
+        Block_shiftChainDown(block->next, amount);
+    }
+}
+
+float Block_evaluate(Block *block, struct Sprite *s, struct SensingData *sensing, SDL_Rect stageRect,
+                     map<string, float> &globalVariables) {
+    float val1 = 0, val2 = 0;
+    if (block->operatorInputs.size() >= 1) val1 = block->operatorInputs[0]->value;
+    if (block->operatorInputs.size() >= 2) val2 = block->operatorInputs[1]->value;
+    switch (block->type) {
+        case BLOCK_ADD:
+            return val1 + val2;
+        case BLOCK_SUBTRACT:
+            return val1 - val2;
+        case BLOCK_MULTIPLY:
+            return val1 * val2;
+        case BLOCK_DIVIDE:
+            if (val2 != 0) return val1 / val2;
+            printf("[ERROR] Math safeguard: division by zero!\n");
+            return 0;
+        case BLOCK_RANDOM:
+            return val1 + (rand() / (float) RAND_MAX) * (val2 - val1);
+        case BLOCK_LESS_THAN:
+            return (val1 < val2) ? 1 : 0;
+        case BLOCK_EQUAL:
+            return (val1 == val2) ? 1 : 0;
+        case BLOCK_GREATER_THAN:
+            return (val1 > val2) ? 1 : 0;
+        case BLOCK_AND:
+            return (val1 != 0 && val2 != 0) ? 1 : 0;
+        case BLOCK_OR:
+            return (val1 != 0 || val2 != 0) ? 1 : 0;
+        case BLOCK_NOT:
+            return (val1 == 0) ? 1 : 0;
+        case BLOCK_MOD:
+            if (val2 != 0) return fmod(val1, val2);
+            return 0;
+        case BLOCK_ROUND:
+            return round(val1);
+        case BLOCK_ABS:
+            return abs(val1);
+        case BLOCK_SQRT:
+            if (val1 >= 0) return sqrt(val1);
+            printf("[ERROR] Math safeguard: sqrt of negative number!\n");
+            return 0;
+        case BLOCK_SIN:
+            return sin(val1 * M_PI / 180.0);
+        case BLOCK_COS:
+            return cos(val1 * M_PI / 180.0);
+        case BLOCK_LENGTH_OF:
+            return to_string(val1).length();
+        case BLOCK_MOUSE_X:
+            return sensing->mouseX - stageRect.x;
+        case BLOCK_MOUSE_Y:
+            return sensing->mouseY - stageRect.y;
+        case BLOCK_TIMER:
+            return SensingData_getTimer(sensing);
+        case BLOCK_MOUSE_DOWN:
+            return sensing->isMouseDown ? 1 : 0;
+        case BLOCK_ANSWER:
+            if (!sensing->answer.empty()) {
+                char *endPtr;
+                float num = strtof(sensing->answer.c_str(), &endPtr);
+                if (*endPtr == '\0') return num;
+            }
+            return 0;
