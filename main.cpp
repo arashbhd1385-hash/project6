@@ -380,3 +380,318 @@ void Sprite_init(struct Sprite *s, string n, float startX, float startY) {
     s->variables["my variable"] = 0;
     s->variableVisible["my variable"] = true;
 }
+void Sprite_destroy(struct Sprite *s) {
+    if (s->costume) SDL_DestroyTexture(s->costume);
+}
+
+void Sprite_setSay(struct Sprite *s, string text, float seconds) {
+    s->sayText = text;
+    s->sayEndTime = SDL_GetTicks() + (Uint32) (seconds * 1000);
+    s->thinkText = "";
+    s->thinkEndTime = 0;
+}
+
+void Sprite_setThink(struct Sprite *s, string text, float seconds) {
+    s->thinkText = text;
+    s->thinkEndTime = SDL_GetTicks() + (Uint32) (seconds * 1000);
+    s->sayText = "";
+    s->sayEndTime = 0;
+}
+
+void Sprite_clearSay(struct Sprite *s) {
+    s->sayText = "";
+    s->sayEndTime = 0;
+    s->thinkText = "";
+    s->thinkEndTime = 0;
+}
+
+bool Sprite_isSaying(struct Sprite *s) {
+    if (s->sayText.empty()) return false;
+    if (s->sayEndTime == 0) return false;
+    if (s->sayEndTime >= 99999999u) return true;
+    return SDL_GetTicks() < s->sayEndTime;
+}
+
+bool Sprite_isThinking(struct Sprite *s) {
+    if (s->thinkText.empty()) return false;
+    if (s->thinkEndTime == 0) return false;
+    if (s->thinkEndTime >= 99999999u) return true;
+    return SDL_GetTicks() < s->thinkEndTime;
+}
+
+void Sprite_startDrag(struct Sprite *s, int mouseX, int mouseY) {
+    if (!s->draggable) return;
+    s->isDragging = true;
+    s->dragOffsetX = mouseX - (int) s->x;
+    s->dragOffsetY = mouseY - (int) s->y;
+}
+
+void Sprite_drag(struct Sprite *s, int mouseX, int mouseY) {
+    if (s->isDragging) {
+        s->x = mouseX - s->dragOffsetX;
+        s->y = mouseY - s->dragOffsetY;
+    }
+}
+
+void Sprite_stopDrag(struct Sprite *s) {
+    s->isDragging = false;
+}
+
+void Sprite_checkDoubleClick(struct Sprite *s, Uint32 currentTime) {
+    if (s->wasDoubleClicked && currentTime - s->doubleClickTime < 300) {
+        s->wasDoubleClicked = false;
+    } else {
+        s->wasDoubleClicked = true;
+        s->doubleClickTime = currentTime;
+    }
+}
+
+void Sprite_nextCostume(struct Sprite *s) {
+    if (s->costumes.empty()) return;
+    s->currentCostumeIndex = (s->currentCostumeIndex + 1) % s->costumes.size();
+}
+
+void Sprite_flipHorizontal(struct Sprite *s) {
+    if (s->flip == SDL_FLIP_HORIZONTAL) {
+        s->flip = SDL_FLIP_NONE;
+    } else {
+        s->flip = SDL_FLIP_HORIZONTAL;
+    }
+}
+
+void Sprite_flipVertical(struct Sprite *s) {
+    if (s->flip == SDL_FLIP_VERTICAL) {
+        s->flip = SDL_FLIP_NONE;
+    } else {
+        s->flip = SDL_FLIP_VERTICAL;
+    }
+}
+
+struct SensingData {
+    int mouseX, mouseY;
+    bool isMouseDown;
+    const Uint8 *keys;
+    Uint32 startTime;
+    string answer;
+    bool waitingForAnswer;
+    string currentQuestion;
+    bool stopRequested;
+    bool isPaused;
+    string lastKey;
+};
+
+void SensingData_init(struct SensingData *s) {
+    s->isMouseDown = false;
+    s->keys = nullptr;
+    s->startTime = 0;
+    s->waitingForAnswer = false;
+    s->stopRequested = false;
+    s->isPaused = false;
+    s->lastKey = "";
+}
+
+void SensingData_update(struct SensingData *s) {
+    s->isMouseDown = SDL_GetMouseState(&s->mouseX, &s->mouseY) & SDL_BUTTON(SDL_BUTTON_LEFT);
+    s->keys = SDL_GetKeyboardState(NULL);
+}
+
+float SensingData_getTimer(struct SensingData *s) {
+    return (SDL_GetTicks() - s->startTime) / 1000.0f;
+}
+
+void SensingData_resetTimer(struct SensingData *s) {
+    s->startTime = SDL_GetTicks();
+}
+
+bool SensingData_isKeyPressed(struct SensingData *s, const string &key) {
+    if (!s->keys) return false;
+    if (key == "space") return s->keys[SDL_SCANCODE_SPACE];
+    if (key == "up") return s->keys[SDL_SCANCODE_UP];
+    if (key == "down") return s->keys[SDL_SCANCODE_DOWN];
+    if (key == "left") return s->keys[SDL_SCANCODE_LEFT];
+    if (key == "right") return s->keys[SDL_SCANCODE_RIGHT];
+    if (key.length() == 1 && key[0] >= 'a' && key[0] <= 'z') { return s->keys[SDL_SCANCODE_A + (key[0] - 'a')]; }
+    return false;
+}
+
+struct Block {
+    int type;
+    float value;
+    string textData;
+    vector<Block *> children;
+    Block *next;
+    Block *prev;
+    Block *parent;
+    SDL_Rect rect;
+    bool isDragging;
+    int dragOffsetX, dragOffsetY;
+    bool isSelected;
+    bool isActive;
+    bool hasInput;
+    char inputText[32];
+    bool isEditingInput;
+    SDL_Rect inputRect;
+    bool hasSecondInput;
+    char inputText2[32];
+    bool isEditingInput2;
+    SDL_Rect inputRect2;
+    bool hasPenColorPicker;
+    SDL_Rect colorPickerRect;
+    bool showColorPicker;
+    bool isOperator;
+    bool isBinaryOperator;
+    vector<Block *> operatorInputs;
+    SDL_Rect operatorInputRects[2];
+    string lastResult;
+    Uint32 resultEndTime;
+    SDL_Rect resultRect;
+    bool isLoop;
+    SDL_Rect loopBodyRect;
+};
+
+Block *Block_create(int type, float v, string text) {
+    Block *block = new Block();
+    block->type = type;
+    block->value = v;
+    block->textData = text;
+    block->next = nullptr;
+    block->prev = nullptr;
+    block->parent = nullptr;
+    block->isDragging = false;
+    block->dragOffsetX = 0;
+    block->dragOffsetY = 0;
+    block->isSelected = false;
+    block->isActive = false;
+    block->hasInput = false;
+    block->isEditingInput = false;
+    block->hasSecondInput = false;
+    block->isEditingInput2 = false;
+    memset(block->inputText2, 0, sizeof(block->inputText2));
+    strcpy(block->inputText2, "0");
+    block->hasPenColorPicker = false;
+    block->showColorPicker = false;
+    block->isOperator = false;
+    block->isBinaryOperator = false;
+    block->isLoop = false;
+    block->lastResult = "";
+    block->resultEndTime = 0;
+    block->rect = {0, 0, 180, 40};
+    memset(block->inputText, 0, sizeof(block->inputText));
+    string defaultVal = to_string((int) v);
+    strcpy(block->inputText, defaultVal.c_str());
+    block->inputRect = {block->rect.x + block->rect.w - 55, block->rect.y + 5, 45, 30};
+    block->inputRect2 = {block->rect.x + block->rect.w - 55, block->rect.y + 5, 45, 30};
+    block->colorPickerRect = {block->rect.x + block->rect.w - 30, block->rect.y + 5, 20, 20};
+    switch (block->type) {
+        case BLOCK_MOVE_STEPS:
+        case BLOCK_TURN_RIGHT:
+        case BLOCK_TURN_LEFT:
+        case BLOCK_WAIT:
+        case BLOCK_CHANGE_X:
+        case BLOCK_CHANGE_Y:
+        case BLOCK_SET_X:
+        case BLOCK_SET_Y:
+        case BLOCK_SET_SIZE:
+        case BLOCK_CHANGE_SIZE:
+        case BLOCK_CHANGE_VOLUME:
+        case BLOCK_SET_VOLUME:
+        case BLOCK_CHANGE_PEN_COLOR:
+        case BLOCK_SET_PEN_SIZE:
+        case BLOCK_CHANGE_PEN_SIZE:
+        case BLOCK_CHANGE_BRIGHTNESS:
+        case BLOCK_SET_BRIGHTNESS:
+        case BLOCK_CHANGE_SATURATION:
+        case BLOCK_SET_SATURATION:
+        case BLOCK_SET_VARIABLE:
+        case BLOCK_CHANGE_VARIABLE:
+        case BLOCK_SET_ANGLE:
+        case BLOCK_GO_BACK_LAYERS:
+        case BLOCK_REPEAT:
+        case BLOCK_WHEN_KEY_PRESSED:
+            block->hasInput = true;
+            if (block->type == BLOCK_WHEN_KEY_PRESSED) {
+                memset(block->inputText, 0, sizeof(block->inputText));
+                strcpy(block->inputText, "space");
+            }
+            break;
+        case BLOCK_GOTO_X_Y:
+            block->hasInput = true;
+            block->hasSecondInput = true;
+            block->rect.w = 220;
+            memset(block->inputText, 0, sizeof(block->inputText));
+            strcpy(block->inputText, "0");
+            memset(block->inputText2, 0, sizeof(block->inputText2));
+            strcpy(block->inputText2, "0");
+            break;
+        case BLOCK_SET_PEN_COLOR:
+            block->hasPenColorPicker = true;
+            block->rect.w = 200;
+            break;
+    }
+    switch (block->type) {
+        case BLOCK_ADD:
+        case BLOCK_SUBTRACT:
+        case BLOCK_MULTIPLY:
+        case BLOCK_DIVIDE:
+        case BLOCK_LESS_THAN:
+        case BLOCK_EQUAL:
+        case BLOCK_GREATER_THAN:
+            block->isOperator = true;
+            block->isBinaryOperator = true;
+            block->rect.w = 250;
+            for (int i = 0; i < 2; i++) {
+                Block *input = Block_create(BLOCK_MOVE_STEPS, 0, "");
+                input->hasInput = true;
+                input->rect.w = 60;
+                block->operatorInputs.push_back(input);
+            }
+            break;
+        case BLOCK_RANDOM:
+        case BLOCK_AND:
+        case BLOCK_OR:
+        case BLOCK_MOD:
+            block->isOperator = true;
+            block->isBinaryOperator = true;
+            block->rect.w = 200;
+            for (int i = 0; i < 2; i++) {
+                Block *input = Block_create(BLOCK_MOVE_STEPS, 0, "");
+                input->hasInput = true;
+                input->rect.w = 60;
+                block->operatorInputs.push_back(input);
+            }
+            break;
+        case BLOCK_NOT:
+        case BLOCK_ROUND:
+        case BLOCK_ABS:
+        case BLOCK_SQRT:
+        case BLOCK_SIN:
+        case BLOCK_COS:
+        case BLOCK_LENGTH_OF:
+            block->isOperator = true;
+            block->isBinaryOperator = false;
+            block->rect.w = 180;
+            {
+                Block *input = Block_create(BLOCK_MOVE_STEPS, 0, "");
+                input->hasInput = true;
+                input->rect.w = 60;
+                block->operatorInputs.push_back(input);
+            }
+            break;
+        default:
+            break;
+    }
+    switch (block->type) {
+        case BLOCK_REPEAT:
+        case BLOCK_FOREVER:
+        case BLOCK_IF_THEN:
+        case BLOCK_IF_THEN_ELSE:
+            block->isLoop = true;
+            block->rect.h = 40;
+            block->rect.w = 200;
+            block->loopBodyRect = {block->rect.x + 20, block->rect.y + 40, block->rect.w - 20, 50};
+            break;
+        default:
+            break;
+    }
+    return block;
+}
