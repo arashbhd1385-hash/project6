@@ -897,3 +897,207 @@ float Block_evaluate(Block *block, struct Sprite *s, struct SensingData *sensing
                 if (*endPtr == '\0') return num;
             }
             return 0;
+        case BLOCK_SET_VARIABLE:
+        case BLOCK_CHANGE_VARIABLE:
+            return globalVariables["my variable"];
+        default:
+            return block->value;
+    }
+}
+
+bool Block_evaluateCondition(Block *block, struct Sprite *s, struct SensingData *sensing, SDL_Rect stageRect,
+                             map<string, float> &globalVariables) {
+    switch (block->type) {
+        case BLOCK_TOUCHING_MOUSE: {
+            int mouseX = sensing->mouseX - stageRect.x;
+            int mouseY = sensing->mouseY - stageRect.y;
+            float dist = sqrt((s->x - mouseX) * (s->x - mouseX) + (s->y - mouseY) * (s->y - mouseY));
+            return dist < 30;
+        }
+        case BLOCK_TOUCHING_EDGE:
+            return s->x < 10 || s->x > stageRect.w - 10 || s->y < 10 || s->y > stageRect.h - 10;
+        case BLOCK_KEY_PRESSED:
+            return SensingData_isKeyPressed(sensing, block->textData);
+        case BLOCK_LESS_THAN:
+        case BLOCK_EQUAL:
+        case BLOCK_GREATER_THAN:
+        case BLOCK_AND:
+        case BLOCK_OR:
+        case BLOCK_NOT:
+            return Block_evaluate(block, s, sensing, stageRect, globalVariables) != 0;
+        default:
+            return block->value > 0;
+    }
+}
+
+bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_Texture *penLayer,
+                   map<string, Block *> &customFunctions, struct SensingData *sensing,
+                   SDL_Rect stageRect, Mix_Chunk *meowSound, Mix_Chunk *popSound,
+                   map<string, float> *globalVariables) {
+    if (!globalVariables) return true;
+    float oldX = s->x;
+    float oldY = s->y;
+    if (block->isOperator) {
+        float result = Block_evaluate(block, s, sensing, stageRect, *globalVariables);
+        Block_setResult(block, result);
+    }
+    bool isSensingCondition = false;
+    switch (block->type) {
+        case BLOCK_TOUCHING_MOUSE:
+        case BLOCK_TOUCHING_EDGE:
+        case BLOCK_KEY_PRESSED:
+        case BLOCK_MOUSE_DOWN:
+            isSensingCondition = true;
+            break;
+        default:
+            break;
+    }
+    if (isSensingCondition) {
+        bool result = Block_evaluateCondition(block, s, sensing, stageRect, *globalVariables);
+        block->lastResult = result ? "true" : "false";
+        block->resultEndTime = SDL_GetTicks() + 2000;
+    }
+    switch (block->type) {
+        case BLOCK_MOVE_STEPS: {
+            float steps = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->x += steps * cos(s->angle * M_PI / 180.0);
+            s->y += steps * sin(s->angle * M_PI / 180.0);
+            s->x = max(0.0f, min(s->x, (float) stageRect.w));
+            s->y = max(0.0f, min(s->y, (float) stageRect.h));
+            if (s->isPenDown) {
+                SDL_SetRenderTarget(renderer, penLayer);
+                SDL_SetRenderDrawColor(renderer, s->penColor.r, s->penColor.g, s->penColor.b, 255);
+                int ps = max(1, s->penSize);
+                for (int dx = -ps / 2; dx <= ps / 2; dx++) {
+                    for (int dy = -ps / 2; dy <= ps / 2; dy++) {
+                        SDL_RenderDrawLine(renderer,
+                                           (int) oldX + dx, (int) oldY + dy,
+                                           (int) s->x + dx, (int) s->y + dy);
+                    }
+                }
+                SDL_SetRenderTarget(renderer, NULL);
+            }
+            break;
+        }
+        case BLOCK_TURN_RIGHT: {
+            float angle = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->angle += angle;
+            break;
+        }
+        case BLOCK_TURN_LEFT: {
+            float angle = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->angle -= angle;
+            break;
+        }
+        case BLOCK_GOTO_MOUSE:
+            s->x = sensing->mouseX - stageRect.x;
+            s->y = sensing->mouseY - stageRect.y;
+            s->x = max(0.0f, min(s->x, (float) stageRect.w));
+            s->y = max(0.0f, min(s->y, (float) stageRect.h));
+            break;
+        case BLOCK_GOTO_X_Y: {
+            float newX = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            float newY = strlen(block->inputText2) > 0 ? atof(block->inputText2) : 0.0f;
+            if (block->children.size() >= 2) {
+                newX = block->children[0]->value;
+                newY = block->children[1]->value;
+            }
+            s->x = max(0.0f, min(newX, (float) stageRect.w));
+            s->y = max(0.0f, min(newY, (float) stageRect.h));
+            break;
+        }
+        case BLOCK_CHANGE_X: {
+            float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->x += delta;
+            s->x = max(0.0f, min(s->x, (float) stageRect.w));
+            break;
+        }
+        case BLOCK_CHANGE_Y: {
+            float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->y += delta;
+            s->y = max(0.0f, min(s->y, (float) stageRect.h));
+            break;
+        }
+        case BLOCK_SET_X: {
+            float newX = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->x = newX;
+            s->x = max(0.0f, min(s->x, (float) stageRect.w));
+            break;
+        }
+        case BLOCK_SET_Y: {
+            float newY = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->y = newY;
+            s->y = max(0.0f, min(s->y, (float) stageRect.h));
+            break;
+        }
+        case BLOCK_SET_ANGLE: {
+            float newAngle = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->angle = newAngle;
+            break;
+        }
+        case BLOCK_IF_ON_EDGE_BOUNCE: {
+            bool bounced = false;
+            if (s->x <= 10) {
+                s->x = 10;
+                s->angle = 180 - s->angle;
+                bounced = true;
+            }
+            else if (s->x >= stageRect.w - 10) {
+                s->x = stageRect.w - 10;
+                s->angle = 180 - s->angle;
+                bounced = true;
+            }
+            if (s->y <= 10) {
+                s->y = 10;
+                s->angle = -s->angle;
+                bounced = true;
+            }
+            else if (s->y >= stageRect.h - 10) {
+                s->y = stageRect.h - 10;
+                s->angle = -s->angle;
+                bounced = true;
+            }
+            (void) bounced;
+            break;
+        }
+        case BLOCK_SAY: {
+            string sayMsg = block->textData;
+            if (sayMsg.substr(0, 4) == "say ") sayMsg = sayMsg.substr(4);
+            if (sayMsg.empty()) sayMsg = "Hello";
+            s->sayText = sayMsg;
+            s->sayEndTime = SDL_GetTicks() + 99999999u;
+            s->thinkText = "";
+            s->thinkEndTime = 0;
+            break;
+        }
+        case BLOCK_SAY_FOR_SECONDS: {
+            float secs = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            if (secs <= 0) secs = 2.0f;
+            string sayMsg = block->textData;
+            if (sayMsg.substr(0, 4) == "say ") sayMsg = sayMsg.substr(4);
+            size_t forPos = sayMsg.rfind(" for ");
+            if (forPos != string::npos) sayMsg = sayMsg.substr(0, forPos);
+            if (sayMsg.empty()) sayMsg = "Hello";
+            s->sayText = sayMsg;
+            s->thinkText = "";
+            s->thinkEndTime = 0;
+            Uint32 endTime = SDL_GetTicks() + (Uint32) (secs * 1000);
+            s->sayEndTime = endTime;
+            while (SDL_GetTicks() < endTime && !sensing->stopRequested) {
+                SDL_Event ev;
+                while (SDL_PollEvent(&ev)) {
+                    if (ev.type == SDL_QUIT) {
+                        sensing->stopRequested = true;
+                        break;
+                    }
+                    if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) { sensing->stopRequested = true; }
+                }
+                SDL_Delay(16);
+                if (g_engine) render(g_engine); else SDL_RenderPresent(renderer);
+            }
+            if (!sensing->stopRequested) {
+                s->sayText = "";
+                s->sayEndTime = 0;
+            }
+            break;
+        }
