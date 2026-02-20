@@ -1703,3 +1703,38 @@ struct ScratchEngine {
     char makeVarName[64];
     bool makeVarEditingName;
 };
+void ScratchEngine_init(struct ScratchEngine *engine) {
+    engine->winWidth = 1200;
+    engine->winHeight = 800;
+    engine->running = true;
+    engine->activeSpriteIndex = 0;
+    engine->MAX_LOG_LINES = 10;
+    engine->draggingBlock = nullptr;
+    engine->selectedBlock = nullptr;
+    engine->targetBlock = nullptr;
+    engine->attachType = ATTACH_NONE;
+    engine->isDragging = false;
+    engine->lastClickTime = 0;
+    engine->lastSpriteClickTime = 0;
+    engine->DOUBLE_CLICK_TIME = 300;
+    engine->meowSound = nullptr;
+    engine->popSound = nullptr;
+    engine->showFileMenu = false;
+    engine->blocksScrollOffset = 0;
+    engine->isDebugMode = false;
+    engine->debugWaitingForStep = false;
+    engine->editingParamField = 0;
+    memset(engine->editParamText, 0, sizeof(engine->editParamText));
+    engine->showMakeBlockPopup = false;
+    memset(engine->makeBlockName, 0, sizeof(engine->makeBlockName));
+    engine->makeBlockEditingName = false;
+    engine->showMakeVariablePopup = false;
+    memset(engine->makeVarName, 0, sizeof(engine->makeVarName));
+    engine->makeVarEditingName = false;
+    engine->currentBackgroundName = "Default";
+    engine->currentBackgroundIndex = 0;
+    engine->textInputActive = false;
+    engine->activeCategory = BLOCK_CATEGORY_MOTION;
+    engine->backgroundColor = {255, 255, 255, 255};
+    engine->backgroundTexture = nullptr;
+}
