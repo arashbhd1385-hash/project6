@@ -193,3 +193,190 @@ vector<CategoryInfo> categories = {
         {"Variables", {255, 140, 0,   255}, BLOCK_CATEGORY_VARIABLES},
         {"Pen",       {15,  189, 140, 255}, BLOCK_CATEGORY_PEN}
 };
+int getBlockCategory(int type) {
+    switch (type) {
+        case BLOCK_MOVE_STEPS:
+        case BLOCK_TURN_RIGHT:
+        case BLOCK_TURN_LEFT:
+        case BLOCK_GOTO_MOUSE:
+        case BLOCK_GOTO_X_Y:
+        case BLOCK_CHANGE_X:
+        case BLOCK_CHANGE_Y:
+        case BLOCK_SET_X:
+        case BLOCK_SET_Y:
+        case BLOCK_SET_ANGLE:
+        case BLOCK_IF_ON_EDGE_BOUNCE:
+            return BLOCK_CATEGORY_MOTION;
+        case BLOCK_SAY:
+        case BLOCK_SAY_FOR_SECONDS:
+        case BLOCK_THINK:
+        case BLOCK_THINK_FOR_SECONDS:
+        case BLOCK_SHOW:
+        case BLOCK_HIDE:
+        case BLOCK_SET_SIZE:
+        case BLOCK_CHANGE_SIZE:
+        case BLOCK_GO_TO_FRONT:
+        case BLOCK_GO_BACK_LAYERS:
+        case BLOCK_SET_COSTUME:
+        case BLOCK_NEXT_COSTUME:
+        case BLOCK_SET_BACKDROP:
+        case BLOCK_NEXT_BACKDROP:
+        case BLOCK_FLIP_HORIZONTAL:
+        case BLOCK_FLIP_VERTICAL:
+            return BLOCK_CATEGORY_LOOKS;
+        case BLOCK_PLAY_SOUND:
+        case BLOCK_PLAY_SOUND_MEOW:
+        case BLOCK_PLAY_SOUND_UNTIL_DONE:
+        case BLOCK_STOP_ALL_SOUNDS:
+        case BLOCK_CHANGE_VOLUME:
+        case BLOCK_SET_VOLUME:
+            return BLOCK_CATEGORY_SOUND;
+        case BLOCK_WHEN_GREEN_FLAG:
+        case BLOCK_WHEN_KEY_PRESSED:
+        case BLOCK_WHEN_SPRITE_CLICKED:
+        case BLOCK_BROADCAST:
+        case BLOCK_BROADCAST_AND_WAIT:
+            return BLOCK_CATEGORY_EVENTS;
+        case BLOCK_REPEAT:
+        case BLOCK_FOREVER:
+        case BLOCK_WAIT:
+        case BLOCK_WAIT_UNTIL:
+        case BLOCK_IF_THEN:
+        case BLOCK_IF_THEN_ELSE:
+        case BLOCK_STOP_ALL:
+        case BLOCK_STOP_THIS_SCRIPT:
+        case BLOCK_STOP_OTHER_SCRIPTS:
+            return BLOCK_CATEGORY_CONTROL;
+        case BLOCK_TOUCHING_MOUSE:
+        case BLOCK_TOUCHING_EDGE:
+        case BLOCK_TOUCHING_COLOR:
+        case BLOCK_KEY_PRESSED:
+        case BLOCK_MOUSE_X:
+        case BLOCK_MOUSE_Y:
+        case BLOCK_MOUSE_DOWN:
+        case BLOCK_TIMER:
+        case BLOCK_RESET_TIMER:
+        case BLOCK_DISTANCE_TO:
+        case BLOCK_ASK_AND_WAIT:
+        case BLOCK_ANSWER:
+        case BLOCK_SET_DRAG_MODE:
+        case BLOCK_DRAG_MODE:
+            return BLOCK_CATEGORY_SENSING;
+        case BLOCK_ADD:
+        case BLOCK_SUBTRACT:
+        case BLOCK_MULTIPLY:
+        case BLOCK_DIVIDE:
+        case BLOCK_RANDOM:
+        case BLOCK_LESS_THAN:
+        case BLOCK_EQUAL:
+        case BLOCK_GREATER_THAN:
+        case BLOCK_AND:
+        case BLOCK_OR:
+        case BLOCK_NOT:
+        case BLOCK_JOIN_STRINGS:
+        case BLOCK_LENGTH_OF:
+        case BLOCK_MOD:
+        case BLOCK_ROUND:
+        case BLOCK_ABS:
+        case BLOCK_SQRT:
+        case BLOCK_SIN:
+        case BLOCK_COS:
+            return BLOCK_CATEGORY_OPERATORS;
+        case BLOCK_SET_VARIABLE:
+        case BLOCK_CHANGE_VARIABLE:
+        case BLOCK_SHOW_VARIABLE:
+        case BLOCK_HIDE_VARIABLE:
+            return BLOCK_CATEGORY_VARIABLES;
+        case BLOCK_PEN_DOWN:
+        case BLOCK_PEN_UP:
+        case BLOCK_ERASE_ALL:
+        case BLOCK_SET_PEN_COLOR:
+        case BLOCK_SET_PEN_COLOR_TO:
+        case BLOCK_CHANGE_PEN_COLOR:
+        case BLOCK_SET_PEN_SIZE:
+        case BLOCK_CHANGE_PEN_SIZE:
+        case BLOCK_STAMP:
+        case BLOCK_CHANGE_BRIGHTNESS:
+        case BLOCK_SET_BRIGHTNESS:
+        case BLOCK_CHANGE_SATURATION:
+        case BLOCK_SET_SATURATION:
+            return BLOCK_CATEGORY_PEN;
+        default:
+            return BLOCK_CATEGORY_MOTION;
+    }
+}
+
+SDL_Color getBlockColor(int type) {
+    int cat = getBlockCategory(type);
+    for (const auto &c: categories) {
+        if (c.category == cat) { return c.color; }
+    }
+    return {150, 150, 150, 255};
+}
+
+struct Sprite {
+    string name;
+    float x, y;
+    float angle;
+    float size;
+    bool isPenDown;
+    bool isVisible;
+    bool draggable;
+    SDL_Color penColor;
+    int penSize;
+    float volume;
+    float colorEffect;
+    float brightness;
+    float saturation;
+    SDL_Color bodyColor;
+    SDL_Texture *costume;
+    string currentCostume;
+    string sayText;
+    Uint32 sayEndTime;
+    int layerOrder;
+    string thinkText;
+    Uint32 thinkEndTime;
+    SDL_RendererFlip flip;
+    map<string, float> variables;
+    map<string, bool> variableVisible;
+    bool isDragging;
+    int dragOffsetX, dragOffsetY;
+    vector<string> costumes;
+    int currentCostumeIndex;
+    bool wasDoubleClicked;
+    Uint32 doubleClickTime;
+};
+
+void Sprite_init(struct Sprite *s, string n, float startX, float startY) {
+    s->name = n;
+    s->x = startX;
+    s->y = startY;
+    s->angle = 0;
+    s->size = 40;
+    s->isPenDown = false;
+    s->isVisible = true;
+    s->draggable = true;
+    s->penSize = 2;
+    s->volume = 100;
+    s->colorEffect = 0;
+    s->brightness = 100;
+    s->saturation = 100;
+    s->costume = nullptr;
+    s->currentCostume = "";
+    s->sayText = "";
+    s->sayEndTime = 0;
+    s->thinkText = "";
+    s->thinkEndTime = 0;
+    s->layerOrder = 0;
+    s->flip = SDL_FLIP_NONE;
+    s->isDragging = false;
+    s->dragOffsetX = 0;
+    s->dragOffsetY = 0;
+    s->currentCostumeIndex = 0;
+    s->wasDoubleClicked = false;
+    s->doubleClickTime = 0;
+    s->penColor = {0, 0, 0, 255};
+    s->bodyColor = {0, 0, 255, 255};
+    s->variables["my variable"] = 0;
+    s->variableVisible["my variable"] = true;
+}
