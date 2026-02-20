@@ -1737,4 +1737,146 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     engine->activeCategory = BLOCK_CATEGORY_MOTION;
     engine->backgroundColor = {255, 255, 255, 255};
     engine->backgroundTexture = nullptr;
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_AUDIO);
+    IMG_Init(IMG_INIT_JPG | IMG_INIT_PNG);
+    TTF_Init();
+    Mix_Init(MIX_INIT_MP3);
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
+    engine->m_window = SDL_CreateWindow("Sharif Scratch Clone",
+                                        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                                        engine->winWidth, engine->winHeight,
+                                        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
+    engine->m_renderer = SDL_CreateRenderer(engine->m_window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+    SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+    engine->m_font = TTF_OpenFont("C:\\Windows\\Fonts\\arial.ttf", 12);
+    if (!engine->m_font) {
+        engine->m_font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12);
+    }
+    engine->meowSound = Mix_LoadWAV("files/meow_sound.mp3");
+    engine->popSound = Mix_LoadWAV("files/pop.wav");
+    if (!engine->meowSound) { cout << "Warning: Failed to load meow_sound.mp3" << endl; }
+    if (!engine->popSound) { cout << "Warning: Failed to load pop.wav" << endl; }
+    for (int i = 1; i <= 4; i++) {
+        string path = "files/bg" + to_string(i) + ".jpg";
+        SDL_Surface *surf = IMG_Load(path.c_str());
+        if (surf) {
+            SDL_Texture *tex = SDL_CreateTextureFromSurface(engine->m_renderer, surf);
+            SDL_FreeSurface(surf);
+            engine->backgroundTextures.push_back(tex);
+        } else {
+            cout << "Warning: Failed to load " << path << endl;
+            engine->backgroundTextures.push_back(nullptr);
+        }
+    }
+    SDL_GetWindowSize(engine->m_window, &engine->winWidth, &engine->winHeight);
+    int blocksPanelWidth = 280;
+    int rightPanelWidth = 450;
+    int codeAreaWidth = engine->winWidth - blocksPanelWidth - rightPanelWidth;
+    engine->blocksPanelRect = {0, 0, blocksPanelWidth, engine->winHeight};
+    engine->rightPanelRect = {blocksPanelWidth + codeAreaWidth, 0, rightPanelWidth, engine->winHeight};
+    engine->codeAreaRect = {blocksPanelWidth, 0, codeAreaWidth, engine->winHeight};
+    int catPanelHeight = 400;
+    int spritesPanelHeight = engine->winHeight - catPanelHeight;
+    engine->catPanelRect = {engine->rightPanelRect.x, 0, engine->rightPanelRect.w, catPanelHeight};
+    engine->spritesPanelRect = {engine->rightPanelRect.x, catPanelHeight, engine->rightPanelRect.w, spritesPanelHeight};
+    engine->fileMenuRect = {engine->blocksPanelRect.x + 10, engine->blocksPanelRect.y + 5, 100, 30};
+    engine->greenFlagRect = {engine->catPanelRect.x + 10, engine->catPanelRect.y + 10, 40, 40};
+    engine->stopRect = {engine->catPanelRect.x + 60, engine->catPanelRect.y + 10, 40, 40};
+    engine->pauseRect = {engine->catPanelRect.x + 110, engine->catPanelRect.y + 10, 40, 40};
+    engine->blocksAreaRect = {engine->blocksPanelRect.x + 45, engine->blocksPanelRect.y + 45,
+                              blocksPanelWidth - 55, engine->winHeight - 200};
+    Button newBtn;
+    newBtn.rect = {engine->fileMenuRect.x, engine->fileMenuRect.y + 35, 150, 30};
+    newBtn.label = "New Project";
+    newBtn.color = {70, 70, 70, 255};
+    newBtn.textColor = {255, 255, 255, 255};
+    newBtn.actionID = 201;
+    engine->fileMenuButtons.push_back(newBtn);
+    Button saveBtn;
+    saveBtn.rect = {engine->fileMenuRect.x, engine->fileMenuRect.y + 70, 150, 30};
+    saveBtn.label = "Save";
+    saveBtn.color = {70, 70, 70, 255};
+    saveBtn.textColor = {255, 255, 255, 255};
+    saveBtn.actionID = 202;
+    engine->fileMenuButtons.push_back(saveBtn);
+    Button loadBtn;
+    loadBtn.rect = {engine->fileMenuRect.x, engine->fileMenuRect.y + 105, 150, 30};
+    loadBtn.label = "Load";
+    loadBtn.color = {70, 70, 70, 255};
+    loadBtn.textColor = {255, 255, 255, 255};
+    loadBtn.actionID = 203;
+    engine->fileMenuButtons.push_back(loadBtn);
+    Button addSpriteBtn;
+    addSpriteBtn.rect = {engine->spritesPanelRect.x + 10, engine->spritesPanelRect.y + engine->spritesPanelRect.h - 40,
+                         180, 30};
+    addSpriteBtn.label = "Add Sprite";
+    addSpriteBtn.color = {100, 200, 100, 255};
+    addSpriteBtn.textColor = {255, 255, 255, 255};
+    addSpriteBtn.actionID = 101;
+    engine->buttons.push_back(addSpriteBtn);
+    Button delSpriteBtn;
+    delSpriteBtn.rect = {engine->spritesPanelRect.x + 10, engine->spritesPanelRect.y + engine->spritesPanelRect.h - 80,
+                         180, 30};
+    delSpriteBtn.label = "Delete Sprite";
+    delSpriteBtn.color = {200, 100, 100, 255};
+    delSpriteBtn.textColor = {255, 255, 255, 255};
+    delSpriteBtn.actionID = 102;
+    engine->buttons.push_back(delSpriteBtn);
+    Button nextSpriteBtn;
+    nextSpriteBtn.rect = {engine->spritesPanelRect.x + 10,
+                          engine->spritesPanelRect.y + engine->spritesPanelRect.h - 120, 180, 30};
+    nextSpriteBtn.label = "Next Sprite";
+    nextSpriteBtn.color = {100, 100, 200, 255};
+    nextSpriteBtn.textColor = {255, 255, 255, 255};
+    nextSpriteBtn.actionID = 103;
+    engine->buttons.push_back(nextSpriteBtn);
+    Button bgBtn;
+    bgBtn.rect = {engine->spritesPanelRect.x + 10, engine->spritesPanelRect.y + engine->spritesPanelRect.h - 160, 180,
+                  30};
+    bgBtn.label = "Change Background";
+    bgBtn.color = {60, 140, 180, 255};
+    bgBtn.textColor = {255, 255, 255, 255};
+    bgBtn.actionID = 104;
+    engine->buttons.push_back(bgBtn);
+    int buttonSize = 25;
+    int startX = engine->blocksPanelRect.x + 15;
+    int startY = engine->blocksPanelRect.y + 45;
+    int spacing = 65;
+    for (size_t i = 0; i < categories.size(); i++) {
+        categories[i].buttonRect = {
+                startX,
+                startY + (int) i * spacing,
+                buttonSize,
+                buttonSize
+        };
+    }
+    engine->penLayer = SDL_CreateTexture(engine->m_renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, 2000,
+                                         2000);
+    SDL_SetTextureBlendMode(engine->penLayer, SDL_BLENDMODE_BLEND);
+    SDL_SetRenderTarget(engine->m_renderer, engine->penLayer);
+    SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 0);
+    SDL_RenderClear(engine->m_renderer);
+    SDL_SetRenderTarget(engine->m_renderer, NULL);
+    SensingData_init(&engine->sensing);
+    engine->sensing.startTime = SDL_GetTicks();
+    struct Sprite cat;
+    Sprite_init(&cat, "Cat", engine->catPanelRect.w / 2, engine->catPanelRect.h / 2);
+    cat.size = 40;
+    cat.costumes.push_back("cat1");
+    cat.costumes.push_back("cat2");
+    engine->sprites.push_back(cat);
+    if (engine->sprites.size() > 0) {
+        SDL_Surface *surface = IMG_Load("files/cat.png");
+        if (surface) {
+            if (engine->sprites[0].costume) { SDL_DestroyTexture(engine->sprites[0].costume); }
+            engine->sprites[0].costume = SDL_CreateTextureFromSurface(engine->m_renderer, surface);
+            SDL_SetTextureBlendMode(engine->sprites[0].costume, SDL_BLENDMODE_BLEND);
+            SDL_FreeSurface(surface);
+            engine->sprites[0].currentCostume = "files/cat.jpg";
+        }
+    }
+    engine->backgrounds.push_back("Default");
+    engine->backgrounds.push_back("Blue Sky");
+    engine->backgrounds.push_back("Forest");
+    vector<Block *> motionBlocks;
 }
