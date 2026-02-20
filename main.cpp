@@ -1401,3 +1401,235 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                     }
                 }
             }
+            break;
+        }
+        case BLOCK_IF_THEN_ELSE: {
+            bool condition = false;
+            if (!block->children.empty()) {
+                condition = Block_evaluateCondition(block->children[0], s, sensing, stageRect, *globalVariables);
+            } else {
+                condition = (block->value != 0);
+            }
+            int elseIdx = (int) block->children.size();
+            for (int i = 1; i < (int) block->children.size(); i++) {
+                if (block->children[i]->type == -1) {
+                    elseIdx = i;
+                    break;
+                }
+            }
+            int start = block->children.empty() ? 0 : 1;
+            if (condition) {
+                for (int i = start; i < elseIdx && !sensing->stopRequested; i++) {
+                    if (!Block_execute(block->children[i], s, renderer, penLayer, customFunctions,
+                                       sensing, stageRect, meowSound, popSound, globalVariables)) {
+                        return false;
+                    }
+                }
+            } else {
+                for (int i = elseIdx + 1; i < (int) block->children.size() && !sensing->stopRequested; i++) {
+                    if (!Block_execute(block->children[i], s, renderer, penLayer, customFunctions,
+                                       sensing, stageRect, meowSound, popSound, globalVariables)) {
+                        return false;
+                    }
+                }
+            }
+            break;
+        }
+        case BLOCK_STOP_ALL:
+            sensing->stopRequested = true;
+            Mix_HaltChannel(-1);
+            return false;
+        case BLOCK_STOP_THIS_SCRIPT:
+            return false;
+        case BLOCK_ASK_AND_WAIT: {
+            string question = block->textData.empty() ? "What's your name?" : block->textData;
+            s->sayText = question;
+            s->sayEndTime = SDL_GetTicks() + 99999999u;
+            sensing->waitingForAnswer = true;
+            sensing->currentQuestion = question;
+            sensing->answer = "";
+            SDL_StartTextInput();
+            while (sensing->waitingForAnswer && !sensing->stopRequested) {
+                SDL_Event ev;
+                while (SDL_PollEvent(&ev)) {
+                    if (ev.type == SDL_QUIT) {
+                        sensing->stopRequested = true;
+                        break;
+                    }
+                    if (ev.type == SDL_TEXTINPUT) { sensing->answer += ev.text.text; }
+                    if (ev.type == SDL_KEYDOWN) {
+                        if (ev.key.keysym.sym == SDLK_RETURN || ev.key.keysym.sym == SDLK_KP_ENTER) {
+                            sensing->waitingForAnswer = false;
+                        } else if (ev.key.keysym.sym == SDLK_BACKSPACE && !sensing->answer.empty()) {
+                            sensing->answer.pop_back();
+                        }
+                    }
+                }
+                s->sayText = question + "\n> " + sensing->answer + "_";
+                SDL_RenderPresent(renderer);
+                SDL_Delay(16);
+            }
+            SDL_StopTextInput();
+            Sprite_clearSay(s);
+            break;
+        }
+        case BLOCK_SET_DRAG_MODE:
+        case BLOCK_DRAG_MODE: {
+            float mode = block->value;
+            s->draggable = (mode != 0);
+            break;
+        }
+        case BLOCK_PEN_DOWN:
+            s->isPenDown = true;
+            break;
+        case BLOCK_PEN_UP:
+            s->isPenDown = false;
+            break;
+        case BLOCK_ERASE_ALL:
+            SDL_SetRenderTarget(renderer, penLayer);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
+            SDL_RenderClear(renderer);
+            SDL_SetRenderTarget(renderer, NULL);
+            break;
+        case BLOCK_SET_PEN_COLOR: {
+            break;
+        }
+        case BLOCK_CHANGE_PEN_COLOR: {
+            float delta = block->value;
+            s->colorEffect += delta;
+            s->penColor.r = (Uint8) ((int) s->colorEffect % 255);
+            s->penColor.g = (Uint8) ((int) (s->colorEffect + 85) % 255);
+            s->penColor.b = (Uint8) ((int) (s->colorEffect + 170) % 255);
+            break;
+        }
+        case BLOCK_SET_PEN_SIZE: {
+            int newSize = (int) (strlen(block->inputText) > 0 ? atof(block->inputText) : block->value);
+            s->penSize = max(1, newSize);
+            break;
+        }
+        case BLOCK_CHANGE_PEN_SIZE: {
+            int delta = (int) (strlen(block->inputText) > 0 ? atof(block->inputText) : block->value);
+            s->penSize = max(1, s->penSize + delta);
+            break;
+        }
+        case BLOCK_STAMP: {
+            SDL_SetRenderTarget(renderer, penLayer);
+            if (s->costume) {
+                int w, h;
+                SDL_QueryTexture(s->costume, NULL, NULL, &w, &h);
+                float scale = min((float) stageRect.w / w, (float) stageRect.h / h) * (s->size / 100.0f);
+                int newW = (int) (w * scale);
+                int newH = (int) (h * scale);
+                SDL_Rect dest = {(int) s->x - newW / 2, (int) s->y - newH / 2, newW, newH};
+                SDL_RenderCopyEx(renderer, s->costume, NULL, &dest, s->angle, NULL, s->flip);
+            } else {
+                SDL_SetRenderDrawColor(renderer, s->penColor.r, s->penColor.g, s->penColor.b, 200);
+                int r = 20;
+                for (int dy = -r; dy <= r; dy++)
+                    for (int dx = -r; dx <= r; dx++)
+                        if (dx * dx + dy * dy <= r * r)
+                            SDL_RenderDrawPoint(renderer, (int) s->x + dx, (int) s->y + dy);
+            }
+            SDL_SetRenderTarget(renderer, NULL);
+            break;
+        }
+        case BLOCK_CHANGE_BRIGHTNESS: {
+            float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->brightness += delta;
+            s->brightness = max(0.0f, min(s->brightness, 200.0f));
+            float bf = s->brightness / 100.0f;
+            s->penColor.r = (Uint8) min(255.0f, s->penColor.r * bf);
+            s->penColor.g = (Uint8) min(255.0f, s->penColor.g * bf);
+            s->penColor.b = (Uint8) min(255.0f, s->penColor.b * bf);
+            break;
+        }
+        case BLOCK_SET_BRIGHTNESS: {
+            float newBrightness = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->brightness = max(0.0f, min(newBrightness, 200.0f));
+            float bf = s->brightness / 100.0f;
+            s->penColor.r = (Uint8) min(255.0f, s->penColor.r * bf);
+            s->penColor.g = (Uint8) min(255.0f, s->penColor.g * bf);
+            s->penColor.b = (Uint8) min(255.0f, s->penColor.b * bf);
+            break;
+        }
+        case BLOCK_CHANGE_SATURATION: {
+            float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->saturation += delta;
+            s->saturation = max(0.0f, min(s->saturation, 200.0f));
+            float gray = 0.299f * s->penColor.r + 0.587f * s->penColor.g + 0.114f * s->penColor.b;
+            float sf = s->saturation / 100.0f;
+            s->penColor.r = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.r - gray)));
+            s->penColor.g = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.g - gray)));
+            s->penColor.b = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.b - gray)));
+            break;
+        }
+        case BLOCK_SET_SATURATION: {
+            float newSaturation = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->saturation = max(0.0f, min(newSaturation, 200.0f));
+            float gray = 0.299f * s->penColor.r + 0.587f * s->penColor.g + 0.114f * s->penColor.b;
+            float sf = s->saturation / 100.0f;
+            s->penColor.r = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.r - gray)));
+            s->penColor.g = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.g - gray)));
+            s->penColor.b = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.b - gray)));
+            break;
+        }
+        case BLOCK_SET_VARIABLE: {
+            float val = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            string varName = block->textData;
+            if (varName.substr(0, 4) == "set ") varName = varName.substr(4);
+            size_t toPos = varName.rfind(" to");
+            if (toPos != string::npos) varName = varName.substr(0, toPos);
+            if (varName.empty()) varName = "my variable";
+            (*globalVariables)[varName] = val;
+            s->variables[varName] = val;
+            break;
+        }
+        case BLOCK_CHANGE_VARIABLE: {
+            float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            string varName = block->textData;
+            if (varName.substr(0, 7) == "change ") varName = varName.substr(7);
+            size_t byPos = varName.rfind(" by");
+            if (byPos != string::npos) varName = varName.substr(0, byPos);
+            if (varName.empty()) varName = "my variable";
+            (*globalVariables)[varName] += delta;
+            s->variables[varName] += delta;
+            break;
+        }
+        case BLOCK_SHOW_VARIABLE: {
+            string varName = block->textData;
+            if (varName.substr(0, 13) == "show variable") varName = varName.substr(13);
+            if (!varName.empty() && varName[0] == ' ') varName = varName.substr(1);
+            if (varName.empty()) varName = "my variable";
+            s->variableVisible[varName] = true;
+            (*globalVariables)[varName] = (*globalVariables).count(varName) ? (*globalVariables)[varName] : 0;
+            break;
+        }
+        case BLOCK_HIDE_VARIABLE: {
+            string varName = block->textData;
+            if (varName.substr(0, 13) == "hide variable") varName = varName.substr(13);
+            if (!varName.empty() && varName[0] == ' ') varName = varName.substr(1);
+            if (varName.empty()) varName = "my variable";
+            s->variableVisible[varName] = false;
+            break;
+        }
+        case BLOCK_DEFINE_FUNC:
+            customFunctions[block->textData] = block;
+            break;
+        case BLOCK_CALL_FUNC:
+            if (customFunctions.find(block->textData) != customFunctions.end()) {
+                Block *funcBody = customFunctions[block->textData];
+                if (funcBody && !funcBody->children.empty()) {
+                    for (auto child: funcBody->children) {
+                        if (!Block_execute(child, s, renderer, penLayer, customFunctions,
+                                           sensing, stageRect, meowSound, popSound, globalVariables)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            break;
+        default:
+            break;
+    }
+    return true;
+}
