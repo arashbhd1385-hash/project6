@@ -1,3 +1,4 @@
+
 #include <bits/stdc++.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -695,3 +696,12 @@ Block *Block_create(int type, float v, string text) {
     }
     return block;
 }
+
+#include <iostream>
+using namespace std;
+
+int main() {
+    cout<<"Hello, World!"<<endl;
+    return 0;
+}
+
