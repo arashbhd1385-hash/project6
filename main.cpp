@@ -1633,3 +1633,11 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
     }
     return true;
 }
+struct Button {
+    SDL_Rect rect;
+    string label;
+    SDL_Color color;
+    SDL_Color textColor;
+    int actionID;
+};
+struct ScratchEngine {
