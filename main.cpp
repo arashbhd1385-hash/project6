@@ -1101,3 +1101,303 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
             }
             break;
         }
+        case BLOCK_THINK: {
+            string thinkMsg = block->textData;
+            if (thinkMsg.substr(0, 6) == "think ") thinkMsg = thinkMsg.substr(6);
+            if (thinkMsg.empty()) thinkMsg = "Hmm...";
+            s->thinkText = thinkMsg;
+            s->thinkEndTime = SDL_GetTicks() + 99999999u;
+            s->sayText = "";
+            s->sayEndTime = 0;
+            break;
+        }
+        case BLOCK_THINK_FOR_SECONDS: {
+            float secs = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            if (secs <= 0) secs = 2.0f;
+            string thinkMsg = block->textData;
+            if (thinkMsg.substr(0, 6) == "think ") thinkMsg = thinkMsg.substr(6);
+            size_t forPos = thinkMsg.rfind(" for ");
+            if (forPos != string::npos) thinkMsg = thinkMsg.substr(0, forPos);
+            if (thinkMsg.empty()) thinkMsg = "Hmm...";
+            s->thinkText = thinkMsg;
+            s->sayText = "";
+            s->sayEndTime = 0;
+            Uint32 endTime = SDL_GetTicks() + (Uint32) (secs * 1000);
+            s->thinkEndTime = endTime;
+            while (SDL_GetTicks() < endTime && !sensing->stopRequested) {
+                SDL_Event ev;
+                while (SDL_PollEvent(&ev)) {
+                    if (ev.type == SDL_QUIT) {
+                        sensing->stopRequested = true;
+                        break;
+                    }
+                    if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) { sensing->stopRequested = true; }
+                }
+                SDL_Delay(16);
+                if (g_engine) render(g_engine); else SDL_RenderPresent(renderer);
+            }
+            if (!sensing->stopRequested) {
+                s->thinkText = "";
+                s->thinkEndTime = 0;
+            }
+            break;
+        }
+        case BLOCK_SHOW:
+            s->isVisible = true;
+            break;
+        case BLOCK_HIDE:
+            s->isVisible = false;
+            break;
+        case BLOCK_SET_SIZE: {
+            float newSize = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->size = newSize;
+            break;
+        }
+        case BLOCK_CHANGE_SIZE: {
+            float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->size += delta;
+            s->size = max(5.0f, s->size);
+            break;
+        }
+        case BLOCK_GO_TO_FRONT:
+            s->layerOrder = 1000;
+            break;
+        case BLOCK_GO_BACK_LAYERS: {
+            int layers = (int) (strlen(block->inputText) > 0 ? atof(block->inputText) : block->value);
+            s->layerOrder = max(0, s->layerOrder - layers);
+            break;
+        }
+        case BLOCK_SET_COSTUME:
+            s->currentCostume = block->textData;
+            break;
+        case BLOCK_NEXT_COSTUME:
+            Sprite_nextCostume(s);
+            break;
+        case BLOCK_FLIP_HORIZONTAL:
+            Sprite_flipHorizontal(s);
+            break;
+        case BLOCK_FLIP_VERTICAL:
+            Sprite_flipVertical(s);
+            break;
+        case BLOCK_PLAY_SOUND:
+            if (popSound) {
+                Mix_VolumeChunk(popSound, (int) (s->volume * MIX_MAX_VOLUME / 100.0));
+                Mix_PlayChannel(-1, popSound, 0);
+            }
+            break;
+        case BLOCK_PLAY_SOUND_MEOW:
+            if (meowSound) {
+                Mix_VolumeChunk(meowSound, (int) (s->volume * MIX_MAX_VOLUME / 100.0));
+                Mix_PlayChannel(-1, meowSound, 0);
+            }
+            break;
+        case BLOCK_PLAY_SOUND_UNTIL_DONE:
+            if (meowSound) {
+                Mix_VolumeChunk(meowSound, (int) (s->volume * MIX_MAX_VOLUME / 100.0));
+                int channel = Mix_PlayChannel(-1, meowSound, 0);
+                while (Mix_Playing(channel) && !sensing->stopRequested) {
+                    SDL_Delay(100);
+                    SDL_RenderPresent(renderer);
+                }
+            }
+            break;
+        case BLOCK_STOP_ALL_SOUNDS:
+            Mix_HaltChannel(-1);
+            break;
+        case BLOCK_CHANGE_VOLUME: {
+            float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->volume += delta;
+            s->volume = max(0.0f, min(s->volume, 100.0f));
+            break;
+        }
+        case BLOCK_SET_VOLUME: {
+            float newVolume = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->volume = newVolume;
+            s->volume = max(0.0f, min(s->volume, 100.0f));
+            break;
+        }
+        case BLOCK_WHEN_GREEN_FLAG:
+        case BLOCK_WHEN_KEY_PRESSED:
+        case BLOCK_WHEN_SPRITE_CLICKED:
+            break;
+        case BLOCK_BROADCAST:
+        case BLOCK_BROADCAST_AND_WAIT:
+            break;
+        case BLOCK_WAIT: {
+            float seconds = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            if (seconds <= 0) seconds = 1.0f;
+            Uint32 start = SDL_GetTicks();
+            while (SDL_GetTicks() - start < (Uint32) (seconds * 1000) && !sensing->stopRequested) {
+                SDL_Event ev;
+                while (SDL_PollEvent(&ev)) {
+                    if (ev.type == SDL_QUIT) {
+                        sensing->stopRequested = true;
+                        break;
+                    }
+                    if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                        int stopX = stageRect.x + 60, stopY = stageRect.y + 10;
+                        if (ev.button.x >= stopX && ev.button.x <= stopX + 40 &&
+                            ev.button.y >= stopY && ev.button.y <= stopY + 40) {
+                            sensing->stopRequested = true;
+                        }
+                    }
+                }
+                SDL_Delay(10);
+                SDL_RenderPresent(renderer);
+            }
+            break;
+        }
+        case BLOCK_WAIT_UNTIL: {
+            while (!block->children.empty() &&
+                   !Block_evaluateCondition(block->children[0], s, sensing, stageRect, *globalVariables) &&
+                   !sensing->stopRequested) {
+                SDL_Delay(10);
+                SDL_RenderPresent(renderer);
+            }
+            break;
+        }
+        case BLOCK_REPEAT: {
+            int count = (int) (strlen(block->inputText) > 0 ? atof(block->inputText) : block->value);
+            if (count <= 0) count = 10;
+            vector<Block *> bodyBlocks;
+            if (!block->children.empty()) {
+                bodyBlocks = block->children;
+            } else if (block->next) {
+                Block *cur = block->next;
+                while (cur) {
+                    if (cur->rect.x >= block->rect.x + 10 &&
+                        cur->rect.x <= block->rect.x + block->rect.w) {
+                        bodyBlocks.push_back(cur);
+                        cur = cur->next;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            for (int i = 0; i < count && !sensing->stopRequested; i++) {
+                while (sensing->isPaused && !sensing->stopRequested) { SDL_Delay(16); }
+                SDL_Event ev;
+                while (SDL_PollEvent(&ev)) {
+                    if (ev.type == SDL_QUIT) {
+                        sensing->stopRequested = true;
+                        break;
+                    }
+                    if (ev.type == SDL_MOUSEBUTTONDOWN) {
+                        int stopX = stageRect.x + 60, stopY = stageRect.y + 10;
+                        if (ev.button.x >= stopX && ev.button.x <= stopX + 40 &&
+                            ev.button.y >= stopY && ev.button.y <= stopY + 40) {
+                            sensing->stopRequested = true;
+                        }
+                    }
+                    if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) { sensing->stopRequested = true; }
+                }
+                if (sensing->stopRequested) break;
+                for (auto child: bodyBlocks) {
+                    if (sensing->stopRequested) return false;
+                    if (!Block_execute(child, s, renderer, penLayer, customFunctions,
+                                       sensing, stageRect, meowSound, popSound, globalVariables)) {
+                        return false;
+                    }
+                }
+                if (g_engine) render(g_engine); else SDL_RenderPresent(renderer);
+                SDL_Delay(16);
+            }
+            break;
+        }
+        case BLOCK_FOREVER: {
+            vector<Block *> bodyBlocks;
+            if (!block->children.empty()) {
+                bodyBlocks = block->children;
+            } else if (block->next) {
+                Block *cur = block->next;
+                while (cur) {
+                    if (cur->rect.x >= block->rect.x + 10 &&
+                        cur->rect.x <= block->rect.x + block->rect.w) {
+                        bodyBlocks.push_back(cur);
+                        cur = cur->next;
+                    } else {
+                        break;
+                    }
+                }
+            }
+            int watchdog = 0;
+            while (!sensing->stopRequested) {
+                while (sensing->isPaused && !sensing->stopRequested) { SDL_Delay(16); }
+                watchdog++;
+                SDL_Event ev;
+                while (SDL_PollEvent(&ev)) {
+                    if (ev.type == SDL_QUIT) {
+                        sensing->stopRequested = true;
+                        break;
+                    }
+                    if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                        int stopX = stageRect.x + 60, stopY = stageRect.y + 10;
+                        if (ev.button.x >= stopX && ev.button.x <= stopX + 40 &&
+                            ev.button.y >= stopY && ev.button.y <= stopY + 40) {
+                            sensing->stopRequested = true;
+                        }
+                        int pauseX = stageRect.x + 110, pauseY = stageRect.y + 10;
+                        if (ev.button.x >= pauseX && ev.button.x <= pauseX + 40 &&
+                            ev.button.y >= pauseY && ev.button.y <= pauseY + 40) {
+                            sensing->isPaused = !sensing->isPaused;
+                        }
+                    }
+                    if (ev.type == SDL_KEYDOWN) {
+                        if (ev.key.keysym.sym == SDLK_ESCAPE) sensing->stopRequested = true;
+                        string key;
+                        switch (ev.key.keysym.sym) {
+                            case SDLK_SPACE:
+                                key = "space";
+                                break;
+                            case SDLK_UP:
+                                key = "up";
+                                break;
+                            case SDLK_DOWN:
+                                key = "down";
+                                break;
+                            case SDLK_LEFT:
+                                key = "left";
+                                break;
+                            case SDLK_RIGHT:
+                                key = "right";
+                                break;
+                            default:
+                                if (ev.key.keysym.sym >= SDLK_a && ev.key.keysym.sym <= SDLK_z)
+                                    key = string(1, 'a' + (ev.key.keysym.sym - SDLK_a));
+                                break;
+                        }
+                        if (!key.empty()) sensing->lastKey = key;
+                    }
+                }
+                if (sensing->stopRequested) break;
+                sensing->isMouseDown =
+                        SDL_GetMouseState(&sensing->mouseX, &sensing->mouseY) & SDL_BUTTON(SDL_BUTTON_LEFT);
+                sensing->keys = SDL_GetKeyboardState(NULL);
+                for (auto child: bodyBlocks) {
+                    if (sensing->stopRequested) return false;
+                    if (!Block_execute(child, s, renderer, penLayer, customFunctions,
+                                       sensing, stageRect, meowSound, popSound, globalVariables)) {
+                        return false;
+                    }
+                }
+                if (watchdog % 2 == 0) { if (g_engine) render(g_engine); else SDL_RenderPresent(renderer); }
+                SDL_Delay(16);
+            }
+            return false;
+        }
+        case BLOCK_IF_THEN: {
+            bool condition = false;
+            if (!block->children.empty()) {
+                condition = Block_evaluateCondition(block->children[0], s, sensing, stageRect, *globalVariables);
+            } else {
+                condition = (block->value != 0);
+            }
+            if (condition) {
+                int start = block->children.empty() ? 0 : 1;
+                for (int i = start; i < (int) block->children.size() && !sensing->stopRequested; i++) {
+                    if (!Block_execute(block->children[i], s, renderer, penLayer, customFunctions,
+                                       sensing, stageRect, meowSound, popSound, globalVariables)) {
+                        return false;
+                    }
+                }
+            }
