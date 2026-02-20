@@ -1,0 +1,3 @@
+"C:\Program Files\JetBrains\CLion 2025.2\bin\cmake\win\x64\bin\cmake.exe" -E rm -f CMakeFiles\project6.dir/objects.a
+C:\MinGW\bin\ar.exe qc CMakeFiles\project6.dir/objects.a @CMakeFiles\project6.dir\objects1.rsp
+C:\MinGW\bin\c++.exe -g -Wl,--whole-archive CMakeFiles\project6.dir/objects.a -Wl,--no-whole-archive -o project6.exe -Wl,--out-implib,libproject6.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\project6.dir\linkLibs.rsp

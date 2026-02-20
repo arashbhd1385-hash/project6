@@ -1,0 +1,3 @@
+C:/Users/Microsoft/CLionProjects/FOP/project6/project6/cmake-build-debug/CMakeFiles/project6.dir
+C:/Users/Microsoft/CLionProjects/FOP/project6/project6/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/Microsoft/CLionProjects/FOP/project6/project6/cmake-build-debug/CMakeFiles/rebuild_cache.dir
