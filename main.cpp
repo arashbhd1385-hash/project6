@@ -1,4 +1,3 @@
-
 #include <bits/stdc++.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
@@ -194,6 +193,7 @@ vector<CategoryInfo> categories = {
         {"Variables", {255, 140, 0,   255}, BLOCK_CATEGORY_VARIABLES},
         {"Pen",       {15,  189, 140, 255}, BLOCK_CATEGORY_PEN}
 };
+
 int getBlockCategory(int type) {
     switch (type) {
         case BLOCK_MOVE_STEPS:
@@ -381,6 +381,7 @@ void Sprite_init(struct Sprite *s, string n, float startX, float startY) {
     s->variables["my variable"] = 0;
     s->variableVisible["my variable"] = true;
 }
+
 void Sprite_destroy(struct Sprite *s) {
     if (s->costume) SDL_DestroyTexture(s->costume);
 }
@@ -697,11 +698,102 @@ Block *Block_create(int type, float v, string text) {
     return block;
 }
 
-#include <iostream>
-using namespace std;
-
-int main() {
-    cout<<"Hello, World!"<<endl;
-    return 0;
+void Block_destroy(Block *block) {
+    for (auto child: block->children) { Block_destroy(child); }
+    for (auto input: block->operatorInputs) { Block_destroy(input); }
+    delete block;
 }
 
+void Block_startEditing(Block *block) {
+    block->isEditingInput = true;
+}
+
+void Block_stopEditing(Block *block) {
+    block->isEditingInput = false;
+    block->value = atof(block->inputText);
+    if (block->type != BLOCK_SET_VARIABLE && block->type != BLOCK_CHANGE_VARIABLE) {
+        size_t pos = block->textData.find_first_of("0123456789");
+        if (pos != string::npos) {
+            string prefix = block->textData.substr(0, pos);
+            string suffix = block->textData.substr(pos);
+            size_t endPos = suffix.find_first_not_of("0123456789.-");
+            if (endPos != string::npos) {
+                suffix = suffix.substr(endPos);
+            } else {
+                suffix = "";
+            }
+            block->textData = prefix + string(block->inputText) + suffix;
+        }
+    }
+}
+
+void Block_setResult(Block *block, float res) {
+    if (fabs(res - round(res)) < 0.0001) {
+        block->lastResult = to_string((int) round(res));
+    } else {
+        char buffer[32];
+        sprintf(buffer, "%.2f", res);
+        block->lastResult = buffer;
+    }
+    block->resultEndTime = SDL_GetTicks() + 2000;
+}
+
+bool Block_hasResult(Block *block) {
+    return !block->lastResult.empty() && SDL_GetTicks() < block->resultEndTime;
+}
+
+void Block_attachBelow(Block *block, Block *child) {
+    if (!child) return;
+    block->next = child;
+    child->prev = block;
+    child->rect.x = block->rect.x;
+    child->rect.y = block->rect.y + block->rect.h;
+}
+
+void Block_attachAbove(Block *block, Block *parent) {
+    if (!parent) return;
+    Block *oldPrev = parent->prev;
+    if (oldPrev) {
+        oldPrev->next = block;
+        block->prev = oldPrev;
+    } else {
+        block->prev = nullptr;
+    }
+    block->next = parent;
+    parent->prev = block;
+    block->rect.x = parent->rect.x;
+    block->rect.y = parent->rect.y - block->rect.h;
+    Block *cur = block;
+    while (cur->next) {
+        cur->next->rect.x = cur->rect.x;
+        cur->next->rect.y = cur->rect.y + cur->rect.h;
+        cur = cur->next;
+    }
+}
+
+void Block_detachBelow(Block *block) {
+    if (block->next) {
+        block->next->prev = nullptr;
+        block->next = nullptr;
+    }
+}
+
+void Block_detachAbove(Block *block) {
+    if (block->prev) {
+        block->prev->next = nullptr;
+        block->prev = nullptr;
+    }
+}
+
+void Block_insertBetween(Block *block, Block *above, Block *below) {
+    if (above) {
+        above->next = block;
+        block->prev = above;
+    }
+    if (below) {
+        below->prev = block;
+        block->next = below;
+    }
+    block->rect.x = (above ? above->rect.x : (below ? below->rect.x : block->rect.x));
+    if (above) { block->rect.y = above->rect.y + above->rect.h; }
+}
