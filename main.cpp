@@ -2283,6 +2283,37 @@ void ScratchEngine_destroy(struct ScratchEngine *engine) {
     SDL_Quit();
 }
 
+
+
+void renderFileMenu(struct ScratchEngine *engine) {
+    SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
+    SDL_RenderFillRect(engine->m_renderer, &engine->fileMenuRect);
+    SDL_SetRenderDrawColor(engine->m_renderer, 200, 200, 200, 255);
+    SDL_RenderDrawRect(engine->m_renderer, &engine->fileMenuRect);
+    {
+        int ix = engine->fileMenuRect.x + 5;
+        int iy = engine->fileMenuRect.y + 7;
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 210, 80, 255);
+        SDL_Rect folderTab = {ix, iy, 8, 5};
+        SDL_RenderFillRect(engine->m_renderer, &folderTab);
+        SDL_Rect folderBody = {ix, iy + 4, 16, 12};
+        SDL_RenderFillRect(engine->m_renderer, &folderBody);
+        SDL_SetRenderDrawColor(engine->m_renderer, 220, 170, 40, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &folderBody);
+    }
+    drawText(engine, "File", engine->fileMenuRect.x + 24, engine->fileMenuRect.y + 5, {255, 255, 255, 255});
+    if (engine->showFileMenu) {
+        SDL_RenderSetClipRect(engine->m_renderer, NULL);
+        for (auto &btn: engine->fileMenuButtons) {
+            SDL_SetRenderDrawColor(engine->m_renderer, btn.color.r, btn.color.g, btn.color.b, btn.color.a);
+            SDL_RenderFillRect(engine->m_renderer, &btn.rect);
+            SDL_SetRenderDrawColor(engine->m_renderer, 200, 200, 200, 255);
+            SDL_RenderDrawRect(engine->m_renderer, &btn.rect);
+            drawText(engine, btn.label, btn.rect.x + 10, btn.rect.y + 5, btn.textColor);
+        }
+    }
+}
+
 int main() {
 
     return 0;
