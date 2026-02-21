@@ -1704,6 +1704,155 @@ struct ScratchEngine {
     bool makeVarEditingName;
 };
 
+void showMakeBlockDialog(struct ScratchEngine *engine) {
+    const int POPUP_W = 460;
+    const int POPUP_H = 280;
+    int popX = (engine->winWidth - POPUP_W) / 2;
+    int popY = (engine->winHeight - POPUP_H) / 2;
+    char blockName[64] = {0};
+    bool addNumberParam = false;
+    bool addTextParam = false;
+    bool addBoolParam = false;
+    bool editing = true;
+    bool confirmed = false;
+    SDL_StartTextInput();
+    SDL_Event ev;
+    while (editing) {
+        SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 160);
+        SDL_Rect overlay = {0, 0, engine->winWidth, engine->winHeight};
+        SDL_RenderFillRect(engine->m_renderer, &overlay);
+        SDL_SetRenderDrawColor(engine->m_renderer, 45, 45, 65, 255);
+        SDL_Rect popup = {popX, popY, POPUP_W, POPUP_H};
+        SDL_RenderFillRect(engine->m_renderer, &popup);
+        SDL_SetRenderDrawColor(engine->m_renderer, 180, 100, 255, 255);
+        for (int bw = 0; bw < 2; bw++) {
+            SDL_Rect br = {popup.x - bw, popup.y - bw, popup.w + bw * 2, popup.h + bw * 2};
+            SDL_RenderDrawRect(engine->m_renderer, &br);
+        }
+        drawText(engine, "Make a Block", popX + POPUP_W / 2, popY + 14, {255, 255, 255, 255}, true);
+        drawText(engine, "Block name:", popX + 20, popY + 44, {200, 200, 200, 255});
+        SDL_Rect inputRect = {popX + 20, popY + 62, POPUP_W - 40, 36};
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(engine->m_renderer, &inputRect);
+        SDL_SetRenderDrawColor(engine->m_renderer, 180, 100, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &inputRect);
+        string nameDisplay = (strlen(blockName) > 0 ? string(blockName) : "") + "|";
+        drawText(engine, nameDisplay, inputRect.x + 8, inputRect.y + 10, {30, 30, 30, 255});
+        drawText(engine, "Preview:", popX + 20, popY + 108, {180, 180, 180, 255});
+        {
+            int bx = popX + 20, by = popY + 124;
+            string label = strlen(blockName) > 0 ? string("define ") + blockName : "define my block";
+            if (addNumberParam) label += " [num]";
+            if (addTextParam) label += " [text]";
+            if (addBoolParam) label += " <bool>";
+            int bw2 = max(160, (int) label.size() * 8 + 20);
+            SDL_SetRenderDrawColor(engine->m_renderer, 255, 100, 50, 255);
+            SDL_Rect previewBlock = {bx, by, bw2, 32};
+            SDL_RenderFillRect(engine->m_renderer, &previewBlock);
+            SDL_SetRenderDrawColor(engine->m_renderer, 220, 60, 20, 255);
+            SDL_RenderDrawRect(engine->m_renderer, &previewBlock);
+            SDL_SetRenderDrawColor(engine->m_renderer, 255, 120, 70, 255);
+            SDL_Rect notch = {bx + 10, by - 8, 30, 10};
+            SDL_RenderFillRect(engine->m_renderer, &notch);
+            drawText(engine, label, bx + bw2 / 2, by + 16, {255, 255, 255, 255}, true);
+        }
+        int cbY = popY + 168;
+        drawText(engine, "Add parameter:", popX + 20, cbY, {190, 190, 190, 255});
+        auto drawCheckbox = [&](int x, int y, bool checked, const char *label) -> SDL_Rect {
+            SDL_Rect box = {x, y, 16, 16};
+            SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+            SDL_RenderFillRect(engine->m_renderer, &box);
+            SDL_SetRenderDrawColor(engine->m_renderer, 100, 100, 100, 255);
+            SDL_RenderDrawRect(engine->m_renderer, &box);
+            if (checked) {
+                SDL_SetRenderDrawColor(engine->m_renderer, 120, 60, 200, 255);
+                SDL_Rect inner = {x + 3, y + 3, 10, 10};
+                SDL_RenderFillRect(engine->m_renderer, &inner);
+            }
+            drawText(engine, label, x + 22, y, {220, 220, 220, 255});
+            return box;
+        };
+        SDL_Rect cbNum = drawCheckbox(popX + 20, cbY + 20, addNumberParam, "Number/Text");
+        SDL_Rect cbText = drawCheckbox(popX + 140, cbY + 20, addTextParam, "Label");
+        SDL_Rect cbBool = drawCheckbox(popX + 250, cbY + 20, addBoolParam, "Boolean");
+        SDL_Rect okBtn = {popX + 60, popY + POPUP_H - 44, 110, 32};
+        SDL_Rect cancelBtn = {popX + 280, popY + POPUP_H - 44, 110, 32};
+        SDL_SetRenderDrawColor(engine->m_renderer, 120, 60, 200, 255);
+        SDL_RenderFillRect(engine->m_renderer, &okBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 200);
+        SDL_RenderDrawRect(engine->m_renderer, &okBtn);
+        drawText(engine, "OK", okBtn.x + okBtn.w / 2, okBtn.y + okBtn.h / 2, {255, 255, 255, 255}, true);
+        SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 100, 255);
+        SDL_RenderFillRect(engine->m_renderer, &cancelBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 200, 200, 200, 200);
+        SDL_RenderDrawRect(engine->m_renderer, &cancelBtn);
+        drawText(engine, "Cancel", cancelBtn.x + cancelBtn.w / 2, cancelBtn.y + cancelBtn.h / 2, {255, 255, 255, 255},
+                 true);
+        SDL_RenderPresent(engine->m_renderer);
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT) {
+                engine->running = false;
+                editing = false;
+            }
+            if (ev.type == SDL_KEYDOWN) {
+                if (ev.key.keysym.sym == SDLK_ESCAPE) { editing = false; }
+                else if (ev.key.keysym.sym == SDLK_RETURN) {
+                    if (strlen(blockName) > 0) {
+                        confirmed = true;
+                        editing = false;
+                    }
+                }
+                else if (ev.key.keysym.sym == SDLK_BACKSPACE) {
+                    int len = strlen(blockName);
+                    if (len > 0) blockName[len - 1] = '\0';
+                }
+            }
+            if (ev.type == SDL_TEXTINPUT) {
+                int len = strlen(blockName);
+                if (len < 62) strncat(blockName, ev.text.text, 62 - len);
+            }
+            if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                int mx = ev.button.x, my = ev.button.y;
+                auto inR = [](int x, int y, SDL_Rect r) {
+                    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+                };
+                if (inR(mx, my, okBtn)) {
+                    if (strlen(blockName) > 0) {
+                        confirmed = true;
+                        editing = false;
+                    }
+                }
+                if (inR(mx, my, cancelBtn)) { editing = false; }
+                if (inR(mx, my, cbNum)) { addNumberParam = !addNumberParam; }
+                if (inR(mx, my, cbText)) { addTextParam = !addTextParam; }
+                if (inR(mx, my, cbBool)) { addBoolParam = !addBoolParam; }
+            }
+        }
+        SDL_Delay(16);
+    }
+    SDL_StopTextInput();
+    if (confirmed && strlen(blockName) > 0) {
+        string funcName = string(blockName);
+        string paramSuffix = "";
+        if (addNumberParam) paramSuffix += " %n";
+        if (addTextParam) paramSuffix += " %s";
+        if (addBoolParam) paramSuffix += " %b";
+        Block *defineBlock = Block_create(BLOCK_DEFINE_FUNC, 0, "define " + funcName + paramSuffix);
+        defineBlock->textData = "define " + funcName + paramSuffix;
+        int xOff = 20 + (int) (engine->codeBlocks.size() % 5) * 40;
+        int yOff = 60 + (int) (engine->codeBlocks.size() % 8) * 50;
+        defineBlock->rect.x = engine->codeAreaRect.x + xOff;
+        defineBlock->rect.y = engine->codeAreaRect.y + yOff;
+        defineBlock->rect.w = max(180, (int) (funcName.size() + paramSuffix.size()) * 8 + 24);
+        engine->codeBlocks.push_back(defineBlock);
+        engine->customFunctions[funcName] = defineBlock;
+        Block *callBlock = Block_create(BLOCK_CALL_FUNC, 0, funcName + paramSuffix);
+        callBlock->textData = funcName;
+        callBlock->rect.w = max(160, (int) (funcName.size() + paramSuffix.size()) * 8 + 20);
+        engine->paletteBlocks[BLOCK_CATEGORY_VARIABLES].push_back(callBlock);
+    }
+}
 
 void ScratchEngine_init(struct ScratchEngine *engine) {
     engine->winWidth = 1200;
@@ -2036,3 +2185,9 @@ void ScratchEngine_destroy(struct ScratchEngine *engine) {
     IMG_Quit();
     SDL_Quit();
 }
+
+int main() {
+
+    return 0;
+}
+
