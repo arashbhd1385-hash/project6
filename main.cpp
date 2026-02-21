@@ -1703,6 +1703,8 @@ struct ScratchEngine {
     char makeVarName[64];
     bool makeVarEditingName;
 };
+
+
 void ScratchEngine_init(struct ScratchEngine *engine) {
     engine->winWidth = 1200;
     engine->winHeight = 800;
@@ -2002,4 +2004,35 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
         engine->spriteRects[i] = {engine->spritesPanelRect.x + 10, engine->spritesPanelRect.y + 30 + i * 20, 200, 20};
     }
     engine->globalVariables["my variable"] = 0;
+}
+
+void ScratchEngine_destroy(struct ScratchEngine *engine) {
+    for (auto &pair: engine->paletteBlocks) {
+        for (auto block: pair.second)
+            Block_destroy(block);
+    }
+    for (auto block: engine->codeBlocks) {
+        Block_destroy(block);
+    }
+    for (auto &s: engine->sprites) {
+        Sprite_destroy(&s);
+    }
+    if (engine->meowSound)
+        Mix_FreeChunk(engine->meowSound);
+    if (engine->popSound)
+        Mix_FreeChunk(engine->popSound);
+    if (engine->m_font)
+        TTF_CloseFont(engine->m_font);
+    for (auto tex: engine->backgroundTextures) {
+        if (tex)
+            SDL_DestroyTexture(tex);
+    }
+    SDL_DestroyTexture(engine->penLayer);
+    SDL_DestroyRenderer(engine->m_renderer);
+    SDL_DestroyWindow(engine->m_window);
+    Mix_CloseAudio();
+    Mix_Quit();
+    TTF_Quit();
+    IMG_Quit();
+    SDL_Quit();
 }
