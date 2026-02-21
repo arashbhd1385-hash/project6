@@ -1854,6 +1854,103 @@ void showMakeBlockDialog(struct ScratchEngine *engine) {
     }
 }
 
+void showMakeVariableDialog(struct ScratchEngine *engine) {
+    const int POPUP_W = 400;
+    const int POPUP_H = 200;
+    int popX = (engine->winWidth - POPUP_W) / 2;
+    int popY = (engine->winHeight - POPUP_H) / 2;
+    char varName[64] = {0};
+    bool editing = true;
+    bool confirmed = false;
+    SDL_StartTextInput();
+    SDL_Event ev;
+    while (editing) {
+        SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 160);
+        SDL_Rect overlay = {0, 0, engine->winWidth, engine->winHeight};
+        SDL_RenderFillRect(engine->m_renderer, &overlay);
+        SDL_SetRenderDrawColor(engine->m_renderer, 50, 50, 70, 255);
+        SDL_Rect popup = {popX, popY, POPUP_W, POPUP_H};
+        SDL_RenderFillRect(engine->m_renderer, &popup);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 180, 50, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &popup);
+        drawText(engine, "New Variable", popX + POPUP_W / 2 - 45, popY + 12, {255, 255, 255, 255});
+        drawText(engine, "Variable name:", popX + 20, popY + 50, {200, 200, 200, 255});
+        SDL_Rect inputRect = {popX + 20, popY + 70, POPUP_W - 40, 36};
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(engine->m_renderer, &inputRect);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 140, 0, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &inputRect);
+        string nameDisplay = string(varName) + "_";
+        drawText(engine, nameDisplay, inputRect.x + 8, inputRect.y + 10, {30, 30, 30, 255});
+        SDL_Rect okBtn = {popX + 60, popY + 145, 100, 32};
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 140, 0, 255);
+        SDL_RenderFillRect(engine->m_renderer, &okBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &okBtn);
+        drawText(engine, "OK", okBtn.x + 35, okBtn.y + 8, {255, 255, 255, 255});
+        SDL_Rect cancelBtn = {popX + 240, popY + 145, 100, 32};
+        SDL_SetRenderDrawColor(engine->m_renderer, 100, 100, 120, 255);
+        SDL_RenderFillRect(engine->m_renderer, &cancelBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &cancelBtn);
+        drawText(engine, "Cancel", cancelBtn.x + 20, cancelBtn.y + 8, {255, 255, 255, 255});
+        SDL_RenderPresent(engine->m_renderer);
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT) {
+                engine->running = false;
+                editing = false;
+            }
+            if (ev.type == SDL_KEYDOWN) {
+                if (ev.key.keysym.sym == SDLK_ESCAPE) { editing = false; }
+                else if (ev.key.keysym.sym == SDLK_RETURN) {
+                    confirmed = true;
+                    editing = false;
+                }
+                else if (ev.key.keysym.sym == SDLK_BACKSPACE) {
+                    int len = strlen(varName);
+                    if (len > 0) varName[len - 1] = '\0';
+                }
+            }
+            if (ev.type == SDL_TEXTINPUT) {
+                int len = strlen(varName);
+                if (len < 63) { strncat(varName, ev.text.text, 63 - len); }
+            }
+            if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                int mx = ev.button.x, my = ev.button.y;
+                auto inRect = [](int x, int y, SDL_Rect r) {
+                    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+                };
+                if (inRect(mx, my, okBtn)) {
+                    confirmed = true;
+                    editing = false;
+                }
+                if (inRect(mx, my, cancelBtn)) { editing = false; }
+            }
+        }
+        SDL_Delay(16);
+    }
+    SDL_StopTextInput();
+    if (confirmed && strlen(varName) > 0) {
+        string vn = string(varName);
+        engine->globalVariables[vn] = 0;
+        if (!engine->sprites.empty()) {
+            engine->sprites[engine->activeSpriteIndex].variables[vn] = 0;
+            engine->sprites[engine->activeSpriteIndex].variableVisible[vn] = true;
+        }
+        Block *setBlock = Block_create(BLOCK_SET_VARIABLE, 0, "set " + vn + " to");
+        setBlock->hasInput = true;
+        engine->paletteBlocks[BLOCK_CATEGORY_VARIABLES].push_back(setBlock);
+        Block *chgBlock = Block_create(BLOCK_CHANGE_VARIABLE, 1, "change " + vn + " by");
+        chgBlock->hasInput = true;
+        engine->paletteBlocks[BLOCK_CATEGORY_VARIABLES].push_back(chgBlock);
+        Block *showBlock = Block_create(BLOCK_SHOW_VARIABLE, 0, "show variable " + vn);
+        engine->paletteBlocks[BLOCK_CATEGORY_VARIABLES].push_back(showBlock);
+        Block *hideBlock = Block_create(BLOCK_HIDE_VARIABLE, 0, "hide variable " + vn);
+        engine->paletteBlocks[BLOCK_CATEGORY_VARIABLES].push_back(hideBlock);
+    }
+}
+
 void ScratchEngine_init(struct ScratchEngine *engine) {
     engine->winWidth = 1200;
     engine->winHeight = 800;
