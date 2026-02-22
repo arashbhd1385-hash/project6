@@ -3135,6 +3135,39 @@ void executeEventBlocks(struct ScratchEngine *engine, int eventType, const strin
     }
 }
 
+void newProject(struct ScratchEngine *engine) {
+    for (auto block: engine->codeBlocks) { Block_destroy(block); }
+    engine->codeBlocks.clear();
+    while (engine->sprites.size() > 1) { engine->sprites.pop_back(); }
+    if (!engine->sprites.empty()) {
+        engine->sprites[0].x = engine->catPanelRect.w / 2;
+        engine->sprites[0].y = engine->catPanelRect.h / 2;
+        engine->sprites[0].angle = 0;
+        engine->sprites[0].size = 40;
+        engine->sprites[0].isVisible = true;
+        engine->sprites[0].isPenDown = false;
+        engine->sprites[0].draggable = true;
+        engine->sprites[0].flip = SDL_FLIP_NONE;
+        engine->sprites[0].brightness = 100;
+        engine->sprites[0].saturation = 100;
+        engine->sprites[0].penColor = {0, 0, 0, 255};
+        Sprite_clearSay(&engine->sprites[0]);
+        engine->sprites[0].variables.clear();
+        engine->sprites[0].variables["my variable"] = 0;
+        engine->sprites[0].variableVisible["my variable"] = true;
+    }
+    engine->activeSpriteIndex = 0;
+    engine->backgroundColor = {255, 255, 255, 255};
+    engine->currentBackgroundName = "Default";
+    engine->currentBackgroundIndex = 0;
+    SDL_SetRenderTarget(engine->m_renderer, engine->penLayer);
+    SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 0);
+    SDL_RenderClear(engine->m_renderer);
+    SDL_SetRenderTarget(engine->m_renderer, NULL);
+    engine->globalVariables.clear();
+    engine->globalVariables["my variable"] = 0;
+}
+
 string openSaveFileDialog() {
     char buf[512] = {0};
 #ifdef __linux__
@@ -3173,7 +3206,131 @@ string openLoadFileDialog() {
     return s;
 }
 
+void saveProject(struct ScratchEngine *engine, const string &filepath) {
+    string path = filepath.empty() ? openSaveFileDialog() : filepath;
+    if (path.empty()) path = "project.scratch";
+    ofstream file(path);
+    if (!file.is_open()) {
+        cout << "Error: Could not save project!" << endl;
+        return;
+    }
+    file << "GLOBALS\n";
+    for (auto &var: engine->globalVariables)
+        file << "VAR|" << var.first << "|" << var.second << "\n";
+    file << "SPRITES\n";
+    for (auto &s: engine->sprites)
+        file << "SPRITE|" << s.name << "|" << s.x << "|" << s.y
+             << "|" << s.angle << "|" << s.size << "|"
+             << (int) s.isVisible << "|" << (int) s.isPenDown << "|"
+             << s.penColor.r << "|" << s.penColor.g << "|" << s.penColor.b << "|"
+             << s.penSize << "|" << s.volume << "|"
+             << s.brightness << "|" << s.saturation << "\n";
+    file << "BLOCKS\n";
+    int blockId = 0;
+    map<Block *, int> blockIds;
+    for (auto block: engine->codeBlocks) {
+        Block *cur = block;
+        while (cur) {
+            blockIds[cur] = blockId++;
+            cur = cur->next;
+        }
+    }
+    function<void(Block *)> indexBlock = [&](Block *cur) {
+        if (!cur || blockIds.count(cur)) return;
+        blockIds[cur] = blockId++;
+        for (auto child: cur->children) indexBlock(child);
+        if (cur->next) indexBlock(cur->next);
+    };
+    for (auto block: engine->codeBlocks) indexBlock(block);
+    function<void(Block *, int)> saveBlock = [&](Block *cur, int parentId) {
+        if (!cur) return;
+        int prevId = cur->prev ? blockIds[cur->prev] : -1;
+        int nextId = cur->next ? blockIds[cur->next] : -1;
+        file << "BLOCK|" << blockIds[cur] << "|" << cur->type
+             << "|" << cur->value << "|" << cur->textData
+             << "|" << cur->rect.x << "|" << cur->rect.y
+             << "|" << prevId << "|" << nextId
+             << "|" << string(cur->inputText) << "|" << parentId
+             << "|" << (int) cur->children.size() << "\n";
+        for (auto child: cur->children) saveBlock(child, blockIds[cur]);
+    };
+    for (auto block: engine->codeBlocks) {
+        Block *cur = block;
+        while (cur) {
+            saveBlock(cur, -1);
+            cur = cur->next;
+        }
+    }
+    file << "END\n";
+    file.close();
+    cout << "Project saved successfully!" << endl;
+}
 
+bool showSavePrompt(struct ScratchEngine *engine) {
+    const int POPUP_W = 360;
+    const int POPUP_H = 140;
+    int popX = (engine->winWidth - POPUP_W) / 2;
+    int popY = (engine->winHeight - POPUP_H) / 2;
+    bool deciding = true;
+    bool cancelled = false;
+    SDL_Event ev;
+    while (deciding) {
+        SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 160);
+        SDL_Rect overlay = {0, 0, engine->winWidth, engine->winHeight};
+        SDL_RenderFillRect(engine->m_renderer, &overlay);
+        SDL_SetRenderDrawColor(engine->m_renderer, 45, 45, 60, 255);
+        SDL_Rect popup = {popX, popY, POPUP_W, POPUP_H};
+        SDL_RenderFillRect(engine->m_renderer, &popup);
+        SDL_SetRenderDrawColor(engine->m_renderer, 200, 200, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &popup);
+        drawText(engine, "Save project before closing?",
+                 popX + POPUP_W / 2 - 100, popY + 20, {255, 255, 255, 255});
+        SDL_Rect saveBtn = {popX + 20, popY + 75, 90, 30};
+        SDL_Rect dontBtn = {popX + 130, popY + 75, 100, 30};
+        SDL_Rect cancelBtn = {popX + 250, popY + 75, 90, 30};
+        SDL_SetRenderDrawColor(engine->m_renderer, 60, 160, 60, 255);
+        SDL_RenderFillRect(engine->m_renderer, &saveBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &saveBtn);
+        drawText(engine, "Save", saveBtn.x + 22, saveBtn.y + 8, {255, 255, 255, 255});
+        SDL_SetRenderDrawColor(engine->m_renderer, 160, 100, 40, 255);
+        SDL_RenderFillRect(engine->m_renderer, &dontBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &dontBtn);
+        drawText(engine, "Don't Save", dontBtn.x + 8, dontBtn.y + 8, {255, 255, 255, 255});
+        SDL_SetRenderDrawColor(engine->m_renderer, 100, 60, 160, 255);
+        SDL_RenderFillRect(engine->m_renderer, &cancelBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &cancelBtn);
+        drawText(engine, "Cancel", cancelBtn.x + 15, cancelBtn.y + 8, {255, 255, 255, 255});
+        SDL_RenderPresent(engine->m_renderer);
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT) { deciding = false; }
+            if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) {
+                cancelled = true;
+                deciding = false;
+            }
+            if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                int mx = ev.button.x, my = ev.button.y;
+                auto inRect = [](int x, int y, SDL_Rect r) {
+                    return x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
+                };
+                if (inRect(mx, my, saveBtn)) {
+                    saveProject(engine);
+                    deciding = false;
+                }
+                if (inRect(mx, my, dontBtn)) { deciding = false; }
+                if (inRect(mx, my, cancelBtn)) {
+                    cancelled = true;
+                    deciding = false;
+                }
+            }
+        }
+        SDL_Delay(16);
+    }
+    return cancelled;
+}
 
 void renderFileMenu(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
