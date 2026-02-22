@@ -2274,9 +2274,7 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
         engine->m_font = TTF_OpenFont("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 12);
     }
     engine->meowSound = Mix_LoadWAV("files/meow_sound.mp3");
-    engine->popSound = Mix_LoadWAV("files/pop.wav");
     if (!engine->meowSound) { cout << "Warning: Failed to load meow_sound.mp3" << endl; }
-    if (!engine->popSound) { cout << "Warning: Failed to load pop.wav" << endl; }
     for (int i = 1; i <= 4; i++) {
         string path = "files/bg" + to_string(i) + ".jpg";
         SDL_Surface *surf = IMG_Load(path.c_str());
@@ -3011,43 +3009,10 @@ void logEvent(struct ScratchEngine *engine, const string &level, int lineNum, co
     (void) engine;
 }
 
-void newProject(struct ScratchEngine *engine) {
-    for (auto block: engine->codeBlocks) { Block_destroy(block); }
-    engine->codeBlocks.clear();
-    while (engine->sprites.size() > 1) { engine->sprites.pop_back(); }
-    if (!engine->sprites.empty()) {
-        engine->sprites[0].x = engine->catPanelRect.w / 2;
-        engine->sprites[0].y = engine->catPanelRect.h / 2;
-        engine->sprites[0].angle = 0;
-        engine->sprites[0].size = 40;
-        engine->sprites[0].isVisible = true;
-        engine->sprites[0].isPenDown = false;
-        engine->sprites[0].draggable = true;
-        engine->sprites[0].flip = SDL_FLIP_NONE;
-        engine->sprites[0].brightness = 100;
-        engine->sprites[0].saturation = 100;
-        engine->sprites[0].penColor = {0, 0, 0, 255};
-        Sprite_clearSay(&engine->sprites[0]);
-        engine->sprites[0].variables.clear();
-        engine->sprites[0].variables["my variable"] = 0;
-        engine->sprites[0].variableVisible["my variable"] = true;
-    }
-    engine->activeSpriteIndex = 0;
-    engine->backgroundColor = {255, 255, 255, 255};
-    engine->currentBackgroundName = "Default";
-    engine->currentBackgroundIndex = 0;
-    SDL_SetRenderTarget(engine->m_renderer, engine->penLayer);
-    SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 0);
-    SDL_RenderClear(engine->m_renderer);
-    SDL_SetRenderTarget(engine->m_renderer, NULL);
-    engine->globalVariables.clear();
-    engine->globalVariables["my variable"] = 0;
-}
-
 string openSaveFileDialog() {
     char buf[512] = {0};
 #ifdef __linux__
-                                                                                                                            FILE* f = popen("zenity --file-selection --save --confirm-overwrite --file-filter='Scratch Projects | *.scratch' --filename=project.scratch 2>/dev/null", "r");
+    FILE* f = popen("zenity --file-selection --save --confirm-overwrite --file-filter='Scratch Projects | *.scratch' --filename=project.scratch 2>/dev/null", "r");
     if (f) { fgets(buf, sizeof(buf), f); pclose(f); }
 #elif defined(_WIN32)
     FILE *f = popen(
@@ -3066,7 +3031,7 @@ string openSaveFileDialog() {
 string openLoadFileDialog() {
     char buf[512] = {0};
 #ifdef __linux__
-                                                                                                                            FILE* f = popen("zenity --file-selection --file-filter='Scratch Projects | *.scratch' 2>/dev/null", "r");
+    FILE* f = popen("zenity --file-selection --file-filter='Scratch Projects | *.scratch' 2>/dev/null", "r");
     if (f) { fgets(buf, sizeof(buf), f); pclose(f); }
 #elif defined(_WIN32)
     FILE *f = popen(
