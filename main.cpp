@@ -3376,6 +3376,348 @@ void renderCategoryButtons(struct ScratchEngine *engine) {
 }
 
 
+
+void render(struct ScratchEngine *engine) {
+    SDL_SetRenderDrawColor(engine->m_renderer, 240, 240, 240, 255);
+    SDL_RenderClear(engine->m_renderer);
+    SDL_SetRenderDrawColor(engine->m_renderer, 20, 40, 80, 255);
+    SDL_RenderFillRect(engine->m_renderer, &engine->blocksPanelRect);
+    renderCategoryButtons(engine);
+    SDL_RenderSetClipRect(engine->m_renderer, &engine->blocksAreaRect);
+    if (engine->paletteBlocks.find(engine->activeCategory) != engine->paletteBlocks.end()) {
+        int y = engine->blocksAreaRect.y - engine->blocksScrollOffset;
+        for (auto block: engine->paletteBlocks[engine->activeCategory]) {
+            block->rect.x = engine->blocksAreaRect.x + 10;
+            block->rect.y = y;
+            if (y + block->rect.h > engine->blocksAreaRect.y - 20 &&
+                y < engine->blocksAreaRect.y + engine->blocksAreaRect.h + 20) {
+                drawBlock(engine, block);
+            }
+            y += block->rect.h + 5;
+        }
+    }
+    SDL_RenderSetClipRect(engine->m_renderer, NULL);
+    {
+        SDL_Rect makeBlockBtn = {engine->blocksPanelRect.x + 10,
+                                 engine->blocksPanelRect.y + engine->blocksPanelRect.h - 80,
+                                 engine->blocksPanelRect.w - 20, 30};
+        SDL_SetRenderDrawColor(engine->m_renderer, 140, 80, 200, 255);
+        SDL_RenderFillRect(engine->m_renderer, &makeBlockBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 200);
+        SDL_RenderDrawRect(engine->m_renderer, &makeBlockBtn);
+        drawText(engine, "Make a Block", makeBlockBtn.x + makeBlockBtn.w / 2, makeBlockBtn.y + makeBlockBtn.h / 2,
+                 {255, 255, 255, 255}, true);
+    }
+    if (engine->activeCategory == BLOCK_CATEGORY_VARIABLES) {
+        SDL_Rect makeVarBtn = {engine->blocksPanelRect.x + 10,
+                               engine->blocksPanelRect.y + engine->blocksPanelRect.h - 115,
+                               engine->blocksPanelRect.w - 20, 30};
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 140, 0, 255);
+        SDL_RenderFillRect(engine->m_renderer, &makeVarBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 200);
+        SDL_RenderDrawRect(engine->m_renderer, &makeVarBtn);
+        drawText(engine, "Make a Variable", makeVarBtn.x + makeVarBtn.w / 2, makeVarBtn.y + makeVarBtn.h / 2,
+                 {255, 255, 255, 255}, true);
+    }
+    SDL_SetRenderDrawColor(engine->m_renderer, 200, 220, 245, 255);
+    SDL_RenderFillRect(engine->m_renderer, &engine->rightPanelRect);
+    SDL_SetRenderDrawColor(engine->m_renderer, engine->backgroundColor.r, engine->backgroundColor.g,
+                           engine->backgroundColor.b, 255);
+    SDL_RenderFillRect(engine->m_renderer, &engine->catPanelRect);
+    if (engine->backgroundTexture) {
+        SDL_RenderCopy(engine->m_renderer, engine->backgroundTexture, NULL, &engine->catPanelRect);
+    }
+    SDL_SetRenderDrawColor(engine->m_renderer, 200, 200, 200, 255);
+    SDL_RenderDrawRect(engine->m_renderer, &engine->catPanelRect);
+    drawText(engine, "Stage - " + engine->currentBackgroundName,
+             engine->catPanelRect.x + 10, engine->catPanelRect.y + 60, {255, 255, 255, 255});
+    {
+        SDL_Rect flagRect = engine->greenFlagRect;
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 200);
+        int r = flagRect.w / 2;
+        int cx = flagRect.x + r, cy = flagRect.y + r;
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                if (dx * dx + dy * dy <= r * r) SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy);
+        SDL_SetRenderDrawColor(engine->m_renderer, 87, 186, 76, 255);
+        r = flagRect.w / 2 - 2;
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                if (dx * dx + dy * dy <= r * r) SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        int px = cx - 6, py = cy;
+        SDL_RenderDrawLine(engine->m_renderer, px, cy - 10, px, cy + 10);
+        for (int row = 0; row < 10; row++) {
+            SDL_RenderDrawLine(engine->m_renderer, px, cy - 10 + row, px + (10 - abs(row - 5)), cy - 10 + row);
+        }
+    }
+    {
+        SDL_Rect stopRect = engine->stopRect;
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 200);
+        int r = stopRect.w / 2;
+        int cx = stopRect.x + r, cy = stopRect.y + r;
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                if (dx * dx + dy * dy <= r * r) SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy);
+        SDL_SetRenderDrawColor(engine->m_renderer, 220, 58, 58, 255);
+        r = stopRect.w / 2 - 2;
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                if (dx * dx + dy * dy <= r * r) SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_Rect sq = {cx - 7, cy - 7, 14, 14};
+        SDL_RenderFillRect(engine->m_renderer, &sq);
+    }
+    {
+        SDL_Rect pauseRect = engine->pauseRect;
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 200);
+        int r = pauseRect.w / 2;
+        int cx = pauseRect.x + r, cy = pauseRect.y + r;
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                if (dx * dx + dy * dy <= r * r) SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy);
+        if (engine->sensing.isPaused) {
+            SDL_SetRenderDrawColor(engine->m_renderer, 60, 180, 60, 255);
+        } else {
+            SDL_SetRenderDrawColor(engine->m_renderer, 240, 180, 0, 255);
+        }
+        r = pauseRect.w / 2 - 2;
+        for (int dy = -r; dy <= r; dy++)
+            for (int dx = -r; dx <= r; dx++)
+                if (dx * dx + dy * dy <= r * r) SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        if (engine->sensing.isPaused) {
+            SDL_Rect tri1 = {cx - 6, cy - 8, 14, 16};
+            SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+            for (int row = 0; row < 14; row++) {
+                int w2 = (row < 7) ? row : (13 - row);
+                SDL_RenderDrawLine(engine->m_renderer, cx - 5, cy - 7 + row, cx - 5 + w2 + 3, cy - 7 + row);
+            }
+        } else {
+            SDL_Rect bar1 = {cx - 7, cy - 8, 5, 16};
+            SDL_Rect bar2 = {cx + 2, cy - 8, 5, 16};
+            SDL_RenderFillRect(engine->m_renderer, &bar1);
+            SDL_RenderFillRect(engine->m_renderer, &bar2);
+        }
+    }
+    float timer = SensingData_getTimer(&engine->sensing);
+    drawText(engine, "Timer: " + to_string((int) timer),
+             engine->catPanelRect.x + engine->catPanelRect.w - 100,
+             engine->catPanelRect.y + 10, {0, 0, 0, 255});
+    SDL_RenderSetClipRect(engine->m_renderer, &engine->catPanelRect);
+    SDL_Rect penSrc = {0, 0, engine->catPanelRect.w, engine->catPanelRect.h};
+    SDL_Rect dstRect = {engine->catPanelRect.x, engine->catPanelRect.y,
+                        engine->catPanelRect.w, engine->catPanelRect.h};
+    SDL_RenderCopy(engine->m_renderer, engine->penLayer, &penSrc, &dstRect);
+    vector<struct Sprite *> sortedSprites;
+    for (auto &sprite: engine->sprites) { sortedSprites.push_back(&sprite); }
+    sort(sortedSprites.begin(), sortedSprites.end(),
+         [](struct Sprite *a, struct Sprite *b) { return a->layerOrder < b->layerOrder; });
+    for (auto sprite: sortedSprites) {
+        if (sprite->isVisible) {
+            drawSprite(engine, sprite, engine->catPanelRect.x, engine->catPanelRect.y,
+                       engine->catPanelRect.w, engine->catPanelRect.h);
+        }
+    }
+    SDL_RenderSetClipRect(engine->m_renderer, NULL);
+    SDL_SetRenderDrawColor(engine->m_renderer, 210, 228, 248, 255);
+    SDL_RenderFillRect(engine->m_renderer, &engine->spritesPanelRect);
+    const int SP_X = engine->spritesPanelRect.x;
+    const int SP_Y = engine->spritesPanelRect.y;
+    const int SP_W = engine->spritesPanelRect.w;
+    SDL_SetRenderDrawColor(engine->m_renderer, 180, 205, 235, 255);
+    SDL_Rect titleBar = {SP_X, SP_Y, SP_W, 24};
+    SDL_RenderFillRect(engine->m_renderer, &titleBar);
+    drawText(engine, "Sprites", SP_X + 8, SP_Y + 5, {50, 80, 130, 255});
+    if (!engine->sprites.empty()) {
+        struct Sprite &s = engine->sprites[engine->activeSpriteIndex];
+        int fy = SP_Y + 28;
+        int fx = SP_X + 6;
+        auto drawField = [&](const char *label, const string &val, int fieldId, int px, int pw) {
+            SDL_Rect bg = {px, fy, pw, 34};
+            bool active = (engine->editingParamField == fieldId);
+            SDL_SetRenderDrawColor(engine->m_renderer, active ? 255 : 255, active ? 230 : 255, active ? 150 : 255, 255);
+            SDL_RenderFillRect(engine->m_renderer, &bg);
+            SDL_SetRenderDrawColor(engine->m_renderer, active ? 80 : 180, active ? 120 : 180, active ? 200 : 180, 255);
+            SDL_RenderDrawRect(engine->m_renderer, &bg);
+            drawText(engine, label, px + 3, fy + 2, {100, 100, 120, 255});
+            string dispVal = active ? string(engine->editParamText) : val;
+            drawText(engine, dispVal, px + 3, fy + 16, {30, 30, 30, 255});
+            return bg;
+        };
+        char xBuf[16], yBuf[16], szBuf[16], angBuf[16];
+        snprintf(xBuf, sizeof(xBuf), "%d", (int) s.x);
+        snprintf(yBuf, sizeof(yBuf), "%d", (int) s.y);
+        snprintf(szBuf, sizeof(szBuf), "%d", (int) s.size);
+        snprintf(angBuf, sizeof(angBuf), "%d", (int) s.angle);
+        int fieldW = (SP_W - 12) / 4;
+        drawField("x", xBuf, 1, fx, fieldW);
+        drawField("y", yBuf, 2, fx + fieldW + 2, fieldW);
+        drawField("Size", szBuf, 3, fx + (fieldW + 2) * 2, fieldW);
+        drawField("Direction", angBuf, 4, fx + (fieldW + 2) * 3, fieldW);
+    }
+    const int THUMB_SZ = 72;
+    const int THUMB_PAD = 6;
+    const int GRID_X = SP_X + THUMB_PAD;
+    const int GRID_Y = SP_Y + 68;
+    const int COLS = max(1, (SP_W - THUMB_PAD) / (THUMB_SZ + THUMB_PAD));
+    SDL_RenderSetClipRect(engine->m_renderer, &engine->spritesPanelRect);
+    for (size_t i = 0; i < engine->sprites.size() && i < 10; i++) {
+        int col = i % COLS;
+        int row = i / COLS;
+        int tx = GRID_X + col * (THUMB_SZ + THUMB_PAD);
+        int ty = GRID_Y + row * (THUMB_SZ + THUMB_PAD + 14);
+        SDL_Rect thumbR = {tx, ty, THUMB_SZ, THUMB_SZ};
+        engine->spriteThumbnailRects[i] = thumbR;
+        engine->spriteRects[i] = thumbR;
+        bool active = (i == engine->activeSpriteIndex);
+        SDL_SetRenderDrawColor(engine->m_renderer, active ? 200 : 230, active ? 230 : 230, active ? 255 : 230, 255);
+        SDL_RenderFillRect(engine->m_renderer, &thumbR);
+        SDL_SetRenderDrawColor(engine->m_renderer, active ? 65 : 180, active ? 120 : 180, active ? 215 : 180, 255);
+        for (int bw = 0; bw < (active ? 3 : 1); bw++) {
+            SDL_Rect br = {thumbR.x - bw, thumbR.y - bw, thumbR.w + bw * 2, thumbR.h + bw * 2};
+            SDL_RenderDrawRect(engine->m_renderer, &br);
+        }
+        struct Sprite &sp = engine->sprites[i];
+        if (sp.costume) {
+            int iw = THUMB_SZ - 10, ih = THUMB_SZ - 10;
+            SDL_Rect imgR = {tx + 5, ty + 5, iw, ih};
+            SDL_RenderCopy(engine->m_renderer, sp.costume, NULL, &imgR);
+        } else {
+            SDL_SetRenderDrawColor(engine->m_renderer, 100, 150, 220, 255);
+            int cx = tx + THUMB_SZ / 2, cy = ty + THUMB_SZ / 2, r = 22;
+            for (int dy = -r; dy <= r; dy++)
+                for (int dx = -r; dx <= r; dx++)
+                    if (dx * dx + dy * dy <= r * r)
+                        SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy);
+        }
+        string shortName = sp.name.length() > 8 ? sp.name.substr(0, 7) + "…" : sp.name;
+        drawText(engine, shortName, tx + THUMB_SZ / 2 - (int) shortName.size() * 3,
+                 ty + THUMB_SZ + 1, active ? SDL_Color{60, 100, 200, 255} : SDL_Color{80, 80, 80, 255});
+    }
+    SDL_RenderSetClipRect(engine->m_renderer, NULL);
+    if (!engine->sprites.empty()) {
+        struct Sprite &activeSprite = engine->sprites[engine->activeSpriteIndex];
+        int varRightX = engine->spritesPanelRect.x + engine->spritesPanelRect.w - 4;
+        int varY = engine->spritesPanelRect.y + engine->spritesPanelRect.h - 60;
+        for (auto &varPair: engine->globalVariables) {
+            bool visible = true;
+            if (activeSprite.variableVisible.count(varPair.first))
+                visible = activeSprite.variableVisible[varPair.first];
+            if (visible) {
+                char buf[128];
+                float v = varPair.second;
+                bool editing = (engine->isEditingVarValue && engine->editingVarName == varPair.first);
+                string dispStr;
+                if (editing) {
+                    dispStr = varPair.first + " = " + string(engine->editVarValueBuf) + "|";
+                } else {
+                    if (fabs(v - round(v)) < 0.001f)
+                        snprintf(buf, sizeof(buf), "%s = %d", varPair.first.c_str(), (int) round(v));
+                    else snprintf(buf, sizeof(buf), "%s = %.2f", varPair.first.c_str(), v);
+                    dispStr = string(buf);
+                }
+                int textW = max(80, (int) dispStr.size() * 8);
+                SDL_Rect varBg = {varRightX - textW - 8, varY - 2, textW + 6, 18};
+                SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+                if (editing) {
+                    SDL_SetRenderDrawColor(engine->m_renderer, 255, 230, 100, 230);
+                } else {
+                    SDL_SetRenderDrawColor(engine->m_renderer, 255, 200, 80, 180);
+                }
+                SDL_RenderFillRect(engine->m_renderer, &varBg);
+                SDL_SetRenderDrawColor(engine->m_renderer, editing ? 220 : 200, editing ? 120 : 140, 0, 255);
+                SDL_RenderDrawRect(engine->m_renderer, &varBg);
+                drawText(engine, dispStr, varBg.x + 3, varBg.y + 2, {60, 30, 0, 255});
+                varY += 22;
+            }
+        }
+    }
+    SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+    SDL_RenderFillRect(engine->m_renderer, &engine->codeAreaRect);
+    {
+        int gridSize = 38;
+        SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(engine->m_renderer, 200, 210, 230, 40);
+        for (int gx = engine->codeAreaRect.x; gx < engine->codeAreaRect.x + engine->codeAreaRect.w; gx += gridSize) {
+            SDL_RenderDrawLine(engine->m_renderer, gx, engine->codeAreaRect.y, gx,
+                               engine->codeAreaRect.y + engine->codeAreaRect.h);
+        }
+        for (int gy = engine->codeAreaRect.y; gy < engine->codeAreaRect.y + engine->codeAreaRect.h; gy += gridSize) {
+            SDL_RenderDrawLine(engine->m_renderer, engine->codeAreaRect.x, gy,
+                               engine->codeAreaRect.x + engine->codeAreaRect.w, gy);
+        }
+    }
+    SDL_SetRenderDrawColor(engine->m_renderer, 200, 200, 200, 255);
+    SDL_RenderDrawRect(engine->m_renderer, &engine->codeAreaRect);
+    drawText(engine, "Code Area - Double-click to run chain - Click numbers to edit",
+             engine->codeAreaRect.x + 10, engine->codeAreaRect.y + 5, {0, 0, 0, 255});
+    SDL_RenderSetClipRect(engine->m_renderer, &engine->codeAreaRect);
+    for (auto block: engine->codeBlocks) {
+        if (!block->prev && block != engine->draggingBlock) {
+            Block *current = block;
+            while (current) {
+                drawBlock(engine, current);
+                current = current->next;
+            }
+        }
+    }
+    SDL_RenderSetClipRect(engine->m_renderer, NULL);
+    if (engine->targetBlock && engine->draggingBlock) {
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 0, 200);
+        SDL_Rect attachRect;
+        switch (engine->attachType) {
+            case ATTACH_ABOVE:
+                attachRect = {engine->targetBlock->rect.x, engine->targetBlock->rect.y - 2,
+                              engine->targetBlock->rect.w, 4};
+                break;
+            case ATTACH_BELOW:
+                attachRect = {engine->targetBlock->rect.x,
+                              engine->targetBlock->rect.y + engine->targetBlock->rect.h - 2,
+                              engine->targetBlock->rect.w, 4};
+                break;
+            case ATTACH_BETWEEN:
+                attachRect = {engine->targetBlock->rect.x,
+                              engine->targetBlock->rect.y + engine->targetBlock->rect.h - 2,
+                              engine->targetBlock->rect.w, 4};
+                break;
+            default:
+                break;
+        }
+        if (engine->attachType != ATTACH_NONE) { SDL_RenderFillRect(engine->m_renderer, &attachRect); }
+    }
+    for (auto &btn: engine->buttons) {
+        SDL_SetRenderDrawColor(engine->m_renderer, btn.color.r, btn.color.g, btn.color.b, btn.color.a);
+        SDL_RenderFillRect(engine->m_renderer, &btn.rect);
+        drawText(engine, btn.label, btn.rect.x + btn.rect.w / 2, btn.rect.y + btn.rect.h / 2, btn.textColor, true);
+    }
+    if (engine->draggingBlock && engine->isDragging) { drawBlock(engine, engine->draggingBlock); }
+    renderFileMenu(engine);
+    bool anyEditing = false;
+    for (auto block: engine->codeBlocks) {
+        if (block->isEditingInput) {
+            anyEditing = true;
+            break;
+        }
+        if (block->isOperator) {
+            for (auto input: block->operatorInputs) {
+                if (input->isEditingInput) {
+                    anyEditing = true;
+                    break;
+                }
+            }
+        }
+    }
+    if (anyEditing && !engine->textInputActive) {
+        SDL_StartTextInput();
+        engine->textInputActive = true;
+    } else if (!anyEditing && engine->textInputActive) {
+        SDL_StopTextInput();
+        engine->textInputActive = false;
+    }
+    SDL_RenderPresent(engine->m_renderer);
+}
+
 void run(struct ScratchEngine *engine) {
     SDL_Event e;
     while (engine->running) {
@@ -3383,8 +3725,8 @@ void run(struct ScratchEngine *engine) {
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 render(engine);
-//                bool cancelled = showSavePrompt(engine);
-//                if (!cancelled) engine->running = false;
+                bool cancelled = showSavePrompt(engine);
+                if (!cancelled) engine->running = false;
             }
             if (e.type == SDL_WINDOWEVENT) {
                 if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
