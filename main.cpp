@@ -3332,6 +3332,9 @@ bool showSavePrompt(struct ScratchEngine *engine) {
     return cancelled;
 }
 
+
+
+
 void renderFileMenu(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
     SDL_RenderFillRect(engine->m_renderer, &engine->fileMenuRect);
@@ -3374,8 +3377,6 @@ void renderCategoryButtons(struct ScratchEngine *engine) {
                  cat.buttonRect.y + cat.buttonRect.h + 15, {255, 255, 255, 255}, true);
     }
 }
-
-
 
 void render(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 240, 240, 240, 255);
@@ -3810,7 +3811,12 @@ void run(struct ScratchEngine *engine) {
 
 
 int main() {
-
+    srand(time(nullptr));
+    struct ScratchEngine engine;
+    g_engine = &engine;
+    ScratchEngine_init(&engine);
+    run(&engine);
+    ScratchEngine_destroy(&engine);
     return 0;
 }
 
