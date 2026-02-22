@@ -1,4 +1,4 @@
-ToolSet: 3.20 (local)@C:\MinGW
+ToolSet: 3.20 (local)@C:\MinGW\MinGW
 Options: 
 
-Options:-DCMAKE_MAKE_PROGRAM=C:/Program Files/JetBrains/CLion 2022.2/bin/ninja/win/ninja.exe
+Options:-DCMAKE_MAKE_PROGRAM=E:/CLion 2022.2/bin/ninja/win/ninja.exe
