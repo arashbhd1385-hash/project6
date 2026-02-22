@@ -3009,6 +3009,132 @@ void logEvent(struct ScratchEngine *engine, const string &level, int lineNum, co
     (void) engine;
 }
 
+void executeBlockChain(struct ScratchEngine *engine, Block *startBlock) {
+    if (!startBlock || engine->sprites.empty()) return;
+    engine->sensing.stopRequested = false;
+    Block *current = startBlock;
+    int lineNum = 0;
+    while (current && !engine->sensing.stopRequested) {
+        while (engine->sensing.isPaused && !engine->sensing.stopRequested) {
+            SDL_Event pev;
+            while (SDL_PollEvent(&pev)) {
+                if (pev.type == SDL_QUIT) {
+                    engine->sensing.stopRequested = true;
+                    engine->sensing.isPaused = false;
+                    break;
+                }
+                if (pev.type == SDL_MOUSEBUTTONDOWN && pev.button.button == SDL_BUTTON_LEFT) {
+                    int pbx = pev.button.x, pby = pev.button.y;
+                    if (isClickInRect(pbx, pby, engine->pauseRect)) {
+                        engine->sensing.isPaused = false;
+                    }
+                    if (isClickInRect(pbx, pby, engine->stopRect)) {
+                        engine->sensing.stopRequested = true;
+                        engine->sensing.isPaused = false;
+                    }
+                }
+                if (pev.type == SDL_KEYDOWN && pev.key.keysym.sym == SDLK_ESCAPE) {
+                    engine->sensing.stopRequested = true;
+                    engine->sensing.isPaused = false;
+                }
+            }
+            render(engine);
+            SDL_Delay(16);
+        }
+        if (engine->sensing.stopRequested) break;
+        lineNum++;
+        current->isActive = true;
+        render(engine);
+        string cmdName = "CMD_" + to_string(current->type);
+        switch (current->type) {
+            case BLOCK_MOVE_STEPS:
+                cmdName = "MOVE";
+                break;
+            case BLOCK_TURN_RIGHT:
+                cmdName = "TURN_R";
+                break;
+            case BLOCK_TURN_LEFT:
+                cmdName = "TURN_L";
+                break;
+            case BLOCK_SAY:
+                cmdName = "SAY";
+                break;
+            case BLOCK_REPEAT:
+                cmdName = "REPEAT";
+                break;
+            case BLOCK_FOREVER:
+                cmdName = "FOREVER";
+                break;
+            case BLOCK_IF_THEN:
+                cmdName = "IF";
+                break;
+            case BLOCK_SET_VARIABLE:
+                cmdName = "SET_VAR";
+                break;
+            case BLOCK_CHANGE_VARIABLE:
+                cmdName = "CHG_VAR";
+                break;
+            case BLOCK_WAIT:
+                cmdName = "WAIT";
+                break;
+            case BLOCK_PEN_DOWN:
+                cmdName = "PEN_DN";
+                break;
+            case BLOCK_PEN_UP:
+                cmdName = "PEN_UP";
+                break;
+            default:
+                break;
+        }
+        logEvent(engine, "INFO", lineNum, cmdName,
+                 "x=" + to_string((int) engine->sprites[engine->activeSpriteIndex].x) +
+                 " y=" + to_string((int) engine->sprites[engine->activeSpriteIndex].y));
+        if (!Block_execute(current, &engine->sprites[engine->activeSpriteIndex],
+                           engine->m_renderer, engine->penLayer,
+                           engine->customFunctions, &engine->sensing,
+                           engine->catPanelRect,
+                           engine->meowSound, engine->popSound,
+                           &engine->globalVariables)) {
+            current->isActive = false;
+            break;
+        }
+        current->isActive = false;
+        SensingData_update(&engine->sensing);
+        current = current->next;
+        render(engine);
+    }
+    engine->sensing.isPaused = false;
+}
+
+void executeEventBlocks(struct ScratchEngine *engine, int eventType, const string &key = "") {
+    for (auto block: engine->codeBlocks) {
+        if (!block->prev && block->type == eventType) {
+            if (eventType == BLOCK_WHEN_KEY_PRESSED) {
+                string blockKey = strlen(block->inputText) > 0 ? string(block->inputText) : block->textData;
+                bool matched = (blockKey == key) || (blockKey.find(key) != string::npos);
+                if (!matched) continue;
+            }
+            if (eventType == BLOCK_BROADCAST || eventType == BLOCK_BROADCAST_AND_WAIT) { continue; }
+            executeBlockChain(engine, block);
+        }
+    }
+    if (!engine->sensing.pendingBroadcasts.empty()) {
+        vector<string> broadcasts = engine->sensing.pendingBroadcasts;
+        engine->sensing.pendingBroadcasts.clear();
+        for (auto &msg: broadcasts) {
+            for (auto block: engine->codeBlocks) {
+                if (!block->prev && block->type == BLOCK_WHEN_BROADCAST_RECEIVED) {
+                    string rcvMsg = block->inputText[0] != '\0' ? string(block->inputText) : "message1";
+                    if (rcvMsg == msg) {
+                        printf("[INFO] Broadcast receiver triggered: '%s'\n", msg.c_str());
+                        executeBlockChain(engine, block);
+                    }
+                }
+            }
+        }
+    }
+}
+
 string openSaveFileDialog() {
     char buf[512] = {0};
 #ifdef __linux__
