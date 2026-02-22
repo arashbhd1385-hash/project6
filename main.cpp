@@ -2685,6 +2685,90 @@ void drawSprite(struct ScratchEngine *engine, struct Sprite *s, int panelX, int 
     }
 }
 
+bool isClickInRect(int x, int y, SDL_Rect rect) {
+    return (x >= rect.x && x <= rect.x + rect.w && y >= rect.y && y <= rect.y + rect.h);
+}
+
+void logEvent(struct ScratchEngine *engine, const string &level, int lineNum, const string &cmd, const string &detail) {
+    static int cycleCount = 0;
+    cycleCount++;
+    string logLine = "[" + level + "][Cycle:" + to_string(cycleCount) +
+                     "][Line:" + to_string(lineNum) + "][" + cmd + "] " + detail;
+    cout << logLine << endl;
+    (void) engine;
+}
+
+void newProject(struct ScratchEngine *engine) {
+    for (auto block: engine->codeBlocks) { Block_destroy(block); }
+    engine->codeBlocks.clear();
+    while (engine->sprites.size() > 1) { engine->sprites.pop_back(); }
+    if (!engine->sprites.empty()) {
+        engine->sprites[0].x = engine->catPanelRect.w / 2;
+        engine->sprites[0].y = engine->catPanelRect.h / 2;
+        engine->sprites[0].angle = 0;
+        engine->sprites[0].size = 40;
+        engine->sprites[0].isVisible = true;
+        engine->sprites[0].isPenDown = false;
+        engine->sprites[0].draggable = true;
+        engine->sprites[0].flip = SDL_FLIP_NONE;
+        engine->sprites[0].brightness = 100;
+        engine->sprites[0].saturation = 100;
+        engine->sprites[0].penColor = {0, 0, 0, 255};
+        Sprite_clearSay(&engine->sprites[0]);
+        engine->sprites[0].variables.clear();
+        engine->sprites[0].variables["my variable"] = 0;
+        engine->sprites[0].variableVisible["my variable"] = true;
+    }
+    engine->activeSpriteIndex = 0;
+    engine->backgroundColor = {255, 255, 255, 255};
+    engine->currentBackgroundName = "Default";
+    engine->currentBackgroundIndex = 0;
+    SDL_SetRenderTarget(engine->m_renderer, engine->penLayer);
+    SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 0);
+    SDL_RenderClear(engine->m_renderer);
+    SDL_SetRenderTarget(engine->m_renderer, NULL);
+    engine->globalVariables.clear();
+    engine->globalVariables["my variable"] = 0;
+}
+
+string openSaveFileDialog() {
+    char buf[512] = {0};
+#ifdef __linux__
+                                                                                                                            FILE* f = popen("zenity --file-selection --save --confirm-overwrite --file-filter='Scratch Projects | *.scratch' --filename=project.scratch 2>/dev/null", "r");
+    if (f) { fgets(buf, sizeof(buf), f); pclose(f); }
+#elif defined(_WIN32)
+    FILE *f = popen(
+            "powershell -command \"Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.SaveFileDialog; $d.Filter='Scratch Projects|*.scratch'; $d.FileName='project.scratch'; if($d.ShowDialog() -eq 'OK'){$d.FileName}\"",
+            "r");
+    if (f) {
+        fgets(buf, sizeof(buf), f);
+        pclose(f);
+    }
+#endif
+    string s(buf);
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) s.pop_back();
+    return s;
+}
+
+string openLoadFileDialog() {
+    char buf[512] = {0};
+#ifdef __linux__
+                                                                                                                            FILE* f = popen("zenity --file-selection --file-filter='Scratch Projects | *.scratch' 2>/dev/null", "r");
+    if (f) { fgets(buf, sizeof(buf), f); pclose(f); }
+#elif defined(_WIN32)
+    FILE *f = popen(
+            "powershell -command \"Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.OpenFileDialog; $d.Filter='Scratch Projects|*.scratch'; if($d.ShowDialog() -eq 'OK'){$d.FileName}\"",
+            "r");
+    if (f) {
+        fgets(buf, sizeof(buf), f);
+        pclose(f);
+    }
+#endif
+    string s(buf);
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r')) s.pop_back();
+    return s;
+}
+
 
 
 void renderFileMenu(struct ScratchEngine *engine) {
