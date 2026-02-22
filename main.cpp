@@ -16,51 +16,9 @@ bool isClickInRect(int x, int y, SDL_Rect rect);
 void saveProject(struct ScratchEngine *engine, const string &filepath = "");
 
 static struct ScratchEngine *g_engine = nullptr;
-struct PixelGlyph {
-    bool rows[5][3];
-};
-static const PixelGlyph PIXEL_FONT[40] = {
-        {{{1, 1, 1}, {1, 0, 1}, {1, 1, 1}, {1, 0, 1}, {1, 0, 1}}},
-        {{{1, 1, 0}, {1, 0, 1}, {1, 1, 0}, {1, 0, 1}, {1, 1, 0}}},
-        {{{0, 1, 1}, {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {0, 1, 1}}},
-        {{{1, 1, 0}, {1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {1, 1, 0}}},
-        {{{1, 1, 1}, {1, 0, 0}, {1, 1, 0}, {1, 0, 0}, {1, 1, 1}}},
-        {{{1, 1, 1}, {1, 0, 0}, {1, 1, 0}, {1, 0, 0}, {1, 0, 0}}},
-        {{{0, 1, 1}, {1, 0, 0}, {1, 0, 1}, {1, 0, 1}, {0, 1, 1}}},
-        {{{1, 0, 1}, {1, 0, 1}, {1, 1, 1}, {1, 0, 1}, {1, 0, 1}}},
-        {{{1, 1, 1}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {1, 1, 1}}},
-        {{{0, 0, 1}, {0, 0, 1}, {0, 0, 1}, {1, 0, 1}, {0, 1, 0}}},
-        {{{1, 0, 1}, {1, 0, 1}, {1, 1, 0}, {1, 0, 1}, {1, 0, 1}}},
-        {{{1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {1, 0, 0}, {1, 1, 1}}},
-        {{{1, 0, 1}, {1, 1, 1}, {1, 1, 1}, {1, 0, 1}, {1, 0, 1}}},
-        {{{1, 1, 1}, {1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {1, 0, 1}}},
-        {{{0, 1, 0}, {1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {0, 1, 0}}},
-        {{{1, 1, 0}, {1, 0, 1}, {1, 1, 0}, {1, 0, 0}, {1, 0, 0}}},
-        {{{0, 1, 0}, {1, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 1, 1}}},
-        {{{1, 1, 0}, {1, 0, 1}, {1, 1, 0}, {1, 0, 1}, {1, 0, 1}}},
-        {{{0, 1, 1}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {1, 1, 0}}},
-        {{{1, 1, 1}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}}},
-        {{{1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {0, 1, 1}}},
-        {{{1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {0, 1, 0}, {0, 1, 0}}},
-        {{{1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {1, 1, 1}, {1, 0, 1}}},
-        {{{1, 0, 1}, {1, 0, 1}, {0, 1, 0}, {1, 0, 1}, {1, 0, 1}}},
-        {{{1, 0, 1}, {1, 0, 1}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}}},
-        {{{1, 1, 1}, {0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {1, 1, 1}}},
-        {{{0, 1, 0}, {1, 0, 1}, {1, 0, 1}, {1, 0, 1}, {0, 1, 0}}},
-        {{{0, 1, 0}, {1, 1, 0}, {0, 1, 0}, {0, 1, 0}, {1, 1, 1}}},
-        {{{1, 1, 1}, {0, 0, 1}, {1, 1, 1}, {1, 0, 0}, {1, 1, 1}}},
-        {{{1, 1, 1}, {0, 0, 1}, {0, 1, 1}, {0, 0, 1}, {1, 1, 1}}},
-        {{{1, 0, 1}, {1, 0, 1}, {1, 1, 1}, {0, 0, 1}, {0, 0, 1}}},
-        {{{1, 1, 1}, {1, 0, 0}, {1, 1, 1}, {0, 0, 1}, {1, 1, 1}}},
-        {{{1, 1, 1}, {1, 0, 0}, {1, 1, 1}, {1, 0, 1}, {1, 1, 1}}},
-        {{{1, 1, 1}, {0, 0, 1}, {0, 1, 0}, {0, 1, 0}, {0, 1, 0}}},
-        {{{1, 1, 1}, {1, 0, 1}, {1, 1, 1}, {1, 0, 1}, {1, 1, 1}}},
-        {{{1, 1, 1}, {1, 0, 1}, {1, 1, 1}, {0, 0, 1}, {1, 1, 1}}},
-        {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {1, 0, 0}}},
-        {{{0, 0, 0}, {0, 1, 0}, {0, 0, 0}, {0, 1, 0}, {0, 0, 0}}},
-        {{{0, 0, 0}, {0, 0, 0}, {1, 1, 1}, {0, 0, 0}, {0, 0, 0}}},
-        {{{0, 0, 1}, {0, 1, 0}, {1, 0, 0}, {0, 1, 0}, {0, 0, 1}}},
-};
+static SDL_Rect g_pauseRect = {0, 0, 0, 0};
+static SDL_Rect g_stopRect = {0, 0, 0, 0};
+
 enum BlockCategory {
     BLOCK_CATEGORY_MOTION,
     BLOCK_CATEGORY_LOOKS,
@@ -97,6 +55,7 @@ enum BlockType {
     BLOCK_PLAY_SOUND,
     BLOCK_PLAY_SOUND_MEOW,
     BLOCK_PLAY_SOUND_UNTIL_DONE,
+    BLOCK_PLAY_MY_SOUND,
     BLOCK_STOP_ALL_SOUNDS,
     BLOCK_CHANGE_VOLUME,
     BLOCK_SET_VOLUME,
@@ -159,6 +118,8 @@ enum BlockType {
     BLOCK_SET_PEN_SIZE,
     BLOCK_CHANGE_PEN_SIZE,
     BLOCK_STAMP,
+    BLOCK_SET_PEN_BRIGHTNESS,
+    BLOCK_SET_PEN_SATURATION,
     BLOCK_DEFINE_FUNC,
     BLOCK_CALL_FUNC,
     BLOCK_CHANGE_BRIGHTNESS,
@@ -171,7 +132,12 @@ enum BlockType {
     BLOCK_NEXT_COSTUME,
     BLOCK_SET_BACKDROP,
     BLOCK_NEXT_BACKDROP,
-    BLOCK_DRAG_MODE
+    BLOCK_DRAG_MODE,
+    BLOCK_WHEN_BROADCAST_RECEIVED,
+    BLOCK_XOR,
+    BLOCK_FLOOR,
+    BLOCK_LETTER_OF,
+    BLOCK_JOIN_STRINGS2
 };
 enum AttachType {
     ATTACH_NONE, ATTACH_ABOVE, ATTACH_BELOW, ATTACH_BETWEEN
@@ -228,6 +194,7 @@ int getBlockCategory(int type) {
         case BLOCK_PLAY_SOUND:
         case BLOCK_PLAY_SOUND_MEOW:
         case BLOCK_PLAY_SOUND_UNTIL_DONE:
+        case BLOCK_PLAY_MY_SOUND:
         case BLOCK_STOP_ALL_SOUNDS:
         case BLOCK_CHANGE_VOLUME:
         case BLOCK_SET_VOLUME:
@@ -237,6 +204,7 @@ int getBlockCategory(int type) {
         case BLOCK_WHEN_SPRITE_CLICKED:
         case BLOCK_BROADCAST:
         case BLOCK_BROADCAST_AND_WAIT:
+        case BLOCK_WHEN_BROADCAST_RECEIVED:
             return BLOCK_CATEGORY_EVENTS;
         case BLOCK_REPEAT:
         case BLOCK_FOREVER:
@@ -282,6 +250,10 @@ int getBlockCategory(int type) {
         case BLOCK_SQRT:
         case BLOCK_SIN:
         case BLOCK_COS:
+        case BLOCK_XOR:
+        case BLOCK_FLOOR:
+        case BLOCK_LETTER_OF:
+        case BLOCK_JOIN_STRINGS2:
             return BLOCK_CATEGORY_OPERATORS;
         case BLOCK_SET_VARIABLE:
         case BLOCK_CHANGE_VARIABLE:
@@ -297,11 +269,14 @@ int getBlockCategory(int type) {
         case BLOCK_SET_PEN_SIZE:
         case BLOCK_CHANGE_PEN_SIZE:
         case BLOCK_STAMP:
+        case BLOCK_SET_PEN_BRIGHTNESS:
+        case BLOCK_SET_PEN_SATURATION:
+            return BLOCK_CATEGORY_PEN;
         case BLOCK_CHANGE_BRIGHTNESS:
         case BLOCK_SET_BRIGHTNESS:
         case BLOCK_CHANGE_SATURATION:
         case BLOCK_SET_SATURATION:
-            return BLOCK_CATEGORY_PEN;
+            return BLOCK_CATEGORY_LOOKS;
         default:
             return BLOCK_CATEGORY_MOTION;
     }
@@ -325,6 +300,8 @@ struct Sprite {
     bool draggable;
     SDL_Color penColor;
     int penSize;
+    float penBrightness;
+    float penSaturation;
     float volume;
     float colorEffect;
     float brightness;
@@ -358,6 +335,8 @@ void Sprite_init(struct Sprite *s, string n, float startX, float startY) {
     s->isVisible = true;
     s->draggable = true;
     s->penSize = 2;
+    s->penBrightness = 100;
+    s->penSaturation = 100;
     s->volume = 100;
     s->colorEffect = 0;
     s->brightness = 100;
@@ -384,20 +363,6 @@ void Sprite_init(struct Sprite *s, string n, float startX, float startY) {
 
 void Sprite_destroy(struct Sprite *s) {
     if (s->costume) SDL_DestroyTexture(s->costume);
-}
-
-void Sprite_setSay(struct Sprite *s, string text, float seconds) {
-    s->sayText = text;
-    s->sayEndTime = SDL_GetTicks() + (Uint32) (seconds * 1000);
-    s->thinkText = "";
-    s->thinkEndTime = 0;
-}
-
-void Sprite_setThink(struct Sprite *s, string text, float seconds) {
-    s->thinkText = text;
-    s->thinkEndTime = SDL_GetTicks() + (Uint32) (seconds * 1000);
-    s->sayText = "";
-    s->sayEndTime = 0;
 }
 
 void Sprite_clearSay(struct Sprite *s) {
@@ -439,15 +404,6 @@ void Sprite_stopDrag(struct Sprite *s) {
     s->isDragging = false;
 }
 
-void Sprite_checkDoubleClick(struct Sprite *s, Uint32 currentTime) {
-    if (s->wasDoubleClicked && currentTime - s->doubleClickTime < 300) {
-        s->wasDoubleClicked = false;
-    } else {
-        s->wasDoubleClicked = true;
-        s->doubleClickTime = currentTime;
-    }
-}
-
 void Sprite_nextCostume(struct Sprite *s) {
     if (s->costumes.empty()) return;
     s->currentCostumeIndex = (s->currentCostumeIndex + 1) % s->costumes.size();
@@ -480,6 +436,8 @@ struct SensingData {
     bool stopRequested;
     bool isPaused;
     string lastKey;
+    vector<string> pendingBroadcasts;
+    string lastBroadcast;
 };
 
 void SensingData_init(struct SensingData *s) {
@@ -610,10 +568,43 @@ Block *Block_create(int type, float v, string text) {
         case BLOCK_GO_BACK_LAYERS:
         case BLOCK_REPEAT:
         case BLOCK_WHEN_KEY_PRESSED:
+        case BLOCK_SAY:
+        case BLOCK_THINK:
+        case BLOCK_BROADCAST:
+        case BLOCK_BROADCAST_AND_WAIT:
+        case BLOCK_WHEN_BROADCAST_RECEIVED:
+        case BLOCK_PLAY_MY_SOUND:
+        case BLOCK_SET_PEN_BRIGHTNESS:
+        case BLOCK_SET_PEN_SATURATION:
             block->hasInput = true;
             if (block->type == BLOCK_WHEN_KEY_PRESSED) {
                 memset(block->inputText, 0, sizeof(block->inputText));
                 strcpy(block->inputText, "space");
+            }
+            if (block->type == BLOCK_SAY) {
+                memset(block->inputText, 0, sizeof(block->inputText));
+                strcpy(block->inputText, "Hello");
+            }
+            if (block->type == BLOCK_THINK) {
+                memset(block->inputText, 0, sizeof(block->inputText));
+                strcpy(block->inputText, "Hmm...");
+            }
+            if (block->type == BLOCK_PLAY_MY_SOUND) {
+                memset(block->inputText, 0, sizeof(block->inputText));
+                strcpy(block->inputText, "(click to select)");
+            }
+            if (block->type == BLOCK_SET_PEN_BRIGHTNESS) {
+                memset(block->inputText, 0, sizeof(block->inputText));
+                strcpy(block->inputText, "100");
+            }
+            if (block->type == BLOCK_SET_PEN_SATURATION) {
+                memset(block->inputText, 0, sizeof(block->inputText));
+                strcpy(block->inputText, "100");
+            }
+            if (block->type == BLOCK_BROADCAST || block->type == BLOCK_BROADCAST_AND_WAIT ||
+                block->type == BLOCK_WHEN_BROADCAST_RECEIVED) {
+                memset(block->inputText, 0, sizeof(block->inputText));
+                strcpy(block->inputText, "message1");
             }
             break;
         case BLOCK_GOTO_X_Y:
@@ -624,6 +615,24 @@ Block *Block_create(int type, float v, string text) {
             strcpy(block->inputText, "0");
             memset(block->inputText2, 0, sizeof(block->inputText2));
             strcpy(block->inputText2, "0");
+            break;
+        case BLOCK_SAY_FOR_SECONDS:
+            block->hasInput = true;
+            block->hasSecondInput = true;
+            block->rect.w = 260;
+            memset(block->inputText, 0, sizeof(block->inputText));
+            strcpy(block->inputText, "Hello");
+            memset(block->inputText2, 0, sizeof(block->inputText2));
+            strcpy(block->inputText2, "2");
+            break;
+        case BLOCK_THINK_FOR_SECONDS:
+            block->hasInput = true;
+            block->hasSecondInput = true;
+            block->rect.w = 260;
+            memset(block->inputText, 0, sizeof(block->inputText));
+            strcpy(block->inputText, "Hmm...");
+            memset(block->inputText2, 0, sizeof(block->inputText2));
+            strcpy(block->inputText2, "4");
             break;
         case BLOCK_SET_PEN_COLOR:
             block->hasPenColorPicker = true;
@@ -652,6 +661,7 @@ Block *Block_create(int type, float v, string text) {
         case BLOCK_AND:
         case BLOCK_OR:
         case BLOCK_MOD:
+        case BLOCK_XOR:
             block->isOperator = true;
             block->isBinaryOperator = true;
             block->rect.w = 200;
@@ -668,6 +678,7 @@ Block *Block_create(int type, float v, string text) {
         case BLOCK_SQRT:
         case BLOCK_SIN:
         case BLOCK_COS:
+        case BLOCK_FLOOR:
         case BLOCK_LENGTH_OF:
             block->isOperator = true;
             block->isBinaryOperator = false;
@@ -676,7 +687,50 @@ Block *Block_create(int type, float v, string text) {
                 Block *input = Block_create(BLOCK_MOVE_STEPS, 0, "");
                 input->hasInput = true;
                 input->rect.w = 60;
+                if (block->type == BLOCK_LENGTH_OF) {
+                    memset(input->inputText, 0, sizeof(input->inputText));
+                    strcpy(input->inputText, "hello");
+                }
                 block->operatorInputs.push_back(input);
+            }
+            break;
+        case BLOCK_LETTER_OF:
+            block->isOperator = true;
+            block->isBinaryOperator = true;
+            block->rect.w = 260;
+            {
+                Block *idx = Block_create(BLOCK_MOVE_STEPS, 1, "");
+                idx->hasInput = true;
+                idx->rect.w = 40;
+                memset(idx->inputText, 0, sizeof(idx->inputText));
+                strcpy(idx->inputText, "1");
+                block->operatorInputs.push_back(idx);
+                Block *str = Block_create(BLOCK_MOVE_STEPS, 0, "");
+                str->hasInput = true;
+                str->rect.w = 80;
+                memset(str->inputText, 0, sizeof(str->inputText));
+                strcpy(str->inputText, "hello");
+                block->operatorInputs.push_back(str);
+            }
+            break;
+        case BLOCK_JOIN_STRINGS:
+        case BLOCK_JOIN_STRINGS2:
+            block->isOperator = true;
+            block->isBinaryOperator = true;
+            block->rect.w = 250;
+            {
+                Block *s1 = Block_create(BLOCK_MOVE_STEPS, 0, "");
+                s1->hasInput = true;
+                s1->rect.w = 70;
+                memset(s1->inputText, 0, sizeof(s1->inputText));
+                strcpy(s1->inputText, "hello");
+                block->operatorInputs.push_back(s1);
+                Block *s2 = Block_create(BLOCK_MOVE_STEPS, 0, "");
+                s2->hasInput = true;
+                s2->rect.w = 70;
+                memset(s2->inputText, 0, sizeof(s2->inputText));
+                strcpy(s2->inputText, " world");
+                block->operatorInputs.push_back(s2);
             }
             break;
         default:
@@ -727,8 +781,10 @@ void Block_stopEditing(Block *block) {
     }
 }
 
-void Block_setResult(Block *block, float res) {
-    if (fabs(res - round(res)) < 0.0001) {
+void Block_setResult(Block *block, float res, bool isVague = false) {
+    if (isVague) {
+        block->lastResult = "vague";
+    } else if (fabs(res - round(res)) < 0.0001) {
         block->lastResult = to_string((int) round(res));
     } else {
         char buffer[32];
@@ -771,33 +827,6 @@ void Block_attachAbove(Block *block, Block *parent) {
     }
 }
 
-void Block_detachBelow(Block *block) {
-    if (block->next) {
-        block->next->prev = nullptr;
-        block->next = nullptr;
-    }
-}
-
-void Block_detachAbove(Block *block) {
-    if (block->prev) {
-        block->prev->next = nullptr;
-        block->prev = nullptr;
-    }
-}
-
-void Block_insertBetween(Block *block, Block *above, Block *below) {
-    if (above) {
-        above->next = block;
-        block->prev = above;
-    }
-    if (below) {
-        below->prev = block;
-        block->next = below;
-    }
-    block->rect.x = (above ? above->rect.x : (below ? below->rect.x : block->rect.x));
-    if (above) { block->rect.y = above->rect.y + above->rect.h; }
-}
-
 void Block_updateBelowPositions(Block *block) {
     if (block->next) {
         block->next->rect.x = block->rect.x;
@@ -812,22 +841,6 @@ Block *Block_getFirstInChain(Block *block) {
     return current;
 }
 
-Block *Block_getLastInChain(Block *block) {
-    Block *current = block;
-    while (current->next) { current = current->next; }
-    return current;
-}
-
-int Block_getChainLength(Block *block) {
-    int count = 1;
-    Block *current = block;
-    while (current->next) {
-        count++;
-        current = current->next;
-    }
-    return count;
-}
-
 void Block_shiftChainDown(Block *block, int amount) {
     if (block->next) {
         block->next->rect.y += amount;
@@ -835,8 +848,7 @@ void Block_shiftChainDown(Block *block, int amount) {
     }
 }
 
-float Block_evaluate(Block *block, struct Sprite *s, struct SensingData *sensing, SDL_Rect stageRect,
-                     map<string, float> &globalVariables) {
+float Block_evaluate(Block *block, struct Sprite *s, struct SensingData *sensing, SDL_Rect stageRect, map<string, float> &globalVariables) {
     float val1 = 0, val2 = 0;
     if (block->operatorInputs.size() >= 1) val1 = block->operatorInputs[0]->value;
     if (block->operatorInputs.size() >= 2) val2 = block->operatorInputs[1]->value;
@@ -848,9 +860,19 @@ float Block_evaluate(Block *block, struct Sprite *s, struct SensingData *sensing
         case BLOCK_MULTIPLY:
             return val1 * val2;
         case BLOCK_DIVIDE:
-            if (val2 != 0) return val1 / val2;
-            printf("[ERROR] Math safeguard: division by zero!\n");
-            return 0;
+            if (val2 == 0) {
+                if (val1 == 0) {
+                    printf("[WARNING] Math: 0/0 = vague\n");
+                    block->lastResult = "vague";
+                    block->resultEndTime = SDL_GetTicks() + 2000;
+                    return 0;
+                }
+                printf("[ERROR] Math safeguard: division by zero (n/0)! Operation cancelled.\n");
+                block->lastResult = "ERR:div/0";
+                block->resultEndTime = SDL_GetTicks() + 2000;
+                return 0;
+            }
+            return val1 / val2;
         case BLOCK_RANDOM:
             return val1 + (rand() / (float) RAND_MAX) * (val2 - val1);
         case BLOCK_LESS_THAN:
@@ -874,14 +896,32 @@ float Block_evaluate(Block *block, struct Sprite *s, struct SensingData *sensing
             return abs(val1);
         case BLOCK_SQRT:
             if (val1 >= 0) return sqrt(val1);
-            printf("[ERROR] Math safeguard: sqrt of negative number!\n");
+            printf("[ERROR] Math safeguard: sqrt of negative number! Operation cancelled.\n");
+            block->lastResult = "ERR:sqrt<0";
+            block->resultEndTime = SDL_GetTicks() + 2000;
             return 0;
         case BLOCK_SIN:
             return sin(val1 * M_PI / 180.0);
         case BLOCK_COS:
             return cos(val1 * M_PI / 180.0);
-        case BLOCK_LENGTH_OF:
-            return to_string(val1).length();
+        case BLOCK_LENGTH_OF: {
+            string text = block->operatorInputs.size() >= 1 ? string(block->operatorInputs[0]->inputText) : "";
+            return (float) text.length();
+        }
+        case BLOCK_LETTER_OF: {
+            if (block->operatorInputs.size() >= 2) {
+                int idx = (int) atof(block->operatorInputs[0]->inputText) - 1;
+                string text = string(block->operatorInputs[1]->inputText);
+                if (idx >= 0 && idx < (int) text.length()) {
+                    return (float) text[idx];
+                }
+            }
+            return 0;
+        }
+        case BLOCK_XOR:
+            return ((val1 != 0) != (val2 != 0)) ? 1 : 0;
+        case BLOCK_FLOOR:
+            return floor(val1);
         case BLOCK_MOUSE_X:
             return sensing->mouseX - stageRect.x;
         case BLOCK_MOUSE_Y:
@@ -905,8 +945,7 @@ float Block_evaluate(Block *block, struct Sprite *s, struct SensingData *sensing
     }
 }
 
-bool Block_evaluateCondition(Block *block, struct Sprite *s, struct SensingData *sensing, SDL_Rect stageRect,
-                             map<string, float> &globalVariables) {
+bool Block_evaluateCondition(Block *block, struct Sprite *s, struct SensingData *sensing, SDL_Rect stageRect, map<string, float> &globalVariables) {
     switch (block->type) {
         case BLOCK_TOUCHING_MOUSE: {
             int mouseX = sensing->mouseX - stageRect.x;
@@ -938,8 +977,39 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
     float oldX = s->x;
     float oldY = s->y;
     if (block->isOperator) {
-        float result = Block_evaluate(block, s, sensing, stageRect, *globalVariables);
-        Block_setResult(block, result);
+        if (block->type == BLOCK_JOIN_STRINGS || block->type == BLOCK_JOIN_STRINGS2) {
+            string s1 = block->operatorInputs.size() >= 1 ? string(block->operatorInputs[0]->inputText) : "";
+            string s2 = block->operatorInputs.size() >= 2 ? string(block->operatorInputs[1]->inputText) : "";
+            block->lastResult = s1 + s2;
+            block->resultEndTime = SDL_GetTicks() + 2000;
+        } else if (block->type == BLOCK_LETTER_OF) {
+            if (block->operatorInputs.size() >= 2) {
+                int idx = (int) atof(block->operatorInputs[0]->inputText) - 1;
+                string text = string(block->operatorInputs[1]->inputText);
+                if (idx >= 0 && idx < (int) text.length()) {
+                    block->lastResult = string(1, text[idx]);
+                } else {
+                    block->lastResult = "";
+                }
+                block->resultEndTime = SDL_GetTicks() + 2000;
+            }
+        } else if (block->type == BLOCK_DIVIDE) {
+            float result = Block_evaluate(block, s, sensing, stageRect, *globalVariables);
+            if (block->lastResult.empty() || block->lastResult.find("ERR") == string::npos)
+                Block_setResult(block, result);
+        } else if (block->type == BLOCK_SQRT) {
+            float val1 = block->operatorInputs.size() >= 1 ? block->operatorInputs[0]->value : 0;
+            if (val1 < 0) {
+                block->lastResult = "ERR:sqrt<0";
+                block->resultEndTime = SDL_GetTicks() + 3000;
+            } else {
+                float result = Block_evaluate(block, s, sensing, stageRect, *globalVariables);
+                Block_setResult(block, result);
+            }
+        } else {
+            float result = Block_evaluate(block, s, sensing, stageRect, *globalVariables);
+            Block_setResult(block, result);
+        }
     }
     bool isSensingCondition = false;
     switch (block->type) {
@@ -1041,8 +1111,7 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                 s->x = 10;
                 s->angle = 180 - s->angle;
                 bounced = true;
-            }
-            else if (s->x >= stageRect.w - 10) {
+            } else if (s->x >= stageRect.w - 10) {
                 s->x = stageRect.w - 10;
                 s->angle = 180 - s->angle;
                 bounced = true;
@@ -1051,8 +1120,7 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                 s->y = 10;
                 s->angle = -s->angle;
                 bounced = true;
-            }
-            else if (s->y >= stageRect.h - 10) {
+            } else if (s->y >= stageRect.h - 10) {
                 s->y = stageRect.h - 10;
                 s->angle = -s->angle;
                 bounced = true;
@@ -1061,22 +1129,18 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
             break;
         }
         case BLOCK_SAY: {
-            string sayMsg = block->textData;
-            if (sayMsg.substr(0, 4) == "say ") sayMsg = sayMsg.substr(4);
+            string sayMsg = block->inputText[0] != '\0' ? string(block->inputText) : "Hello";
             if (sayMsg.empty()) sayMsg = "Hello";
             s->sayText = sayMsg;
-            s->sayEndTime = SDL_GetTicks() + 99999999u;
+            s->sayEndTime = SDL_GetTicks() + 4000u;
             s->thinkText = "";
             s->thinkEndTime = 0;
             break;
         }
         case BLOCK_SAY_FOR_SECONDS: {
-            float secs = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            float secs = strlen(block->inputText2) > 0 ? atof(block->inputText2) : block->value;
             if (secs <= 0) secs = 2.0f;
-            string sayMsg = block->textData;
-            if (sayMsg.substr(0, 4) == "say ") sayMsg = sayMsg.substr(4);
-            size_t forPos = sayMsg.rfind(" for ");
-            if (forPos != string::npos) sayMsg = sayMsg.substr(0, forPos);
+            string sayMsg = block->inputText[0] != '\0' ? string(block->inputText) : "Hello";
             if (sayMsg.empty()) sayMsg = "Hello";
             s->sayText = sayMsg;
             s->thinkText = "";
@@ -1091,6 +1155,34 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                         break;
                     }
                     if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) { sensing->stopRequested = true; }
+                    if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                        if (g_engine && isClickInRect(ev.button.x, ev.button.y, g_stopRect))
+                            sensing->stopRequested = true;
+                        if (g_engine && isClickInRect(ev.button.x, ev.button.y, g_pauseRect))
+                            sensing->isPaused = !sensing->isPaused;
+                    }
+                }
+                while (sensing->isPaused && !sensing->stopRequested) {
+                    SDL_Event pev;
+                    while (SDL_PollEvent(&pev)) {
+                        if (pev.type == SDL_QUIT) {
+                            sensing->stopRequested = true;
+                            break;
+                        }
+                        if (pev.type == SDL_MOUSEBUTTONDOWN && pev.button.button == SDL_BUTTON_LEFT) {
+                            if (g_engine && isClickInRect(pev.button.x, pev.button.y, g_pauseRect))
+                                sensing->isPaused = false;
+                            if (g_engine && isClickInRect(pev.button.x, pev.button.y, g_stopRect)) {
+                                sensing->stopRequested = true;
+                                sensing->isPaused = false;
+                            }
+                        }
+                        if (pev.type == SDL_KEYDOWN && pev.key.keysym.sym == SDLK_ESCAPE) {
+                            sensing->stopRequested = true;
+                            sensing->isPaused = false;
+                        }
+                    }
+                    if (g_engine) render(g_engine); else SDL_Delay(16);
                 }
                 SDL_Delay(16);
                 if (g_engine) render(g_engine); else SDL_RenderPresent(renderer);
@@ -1102,23 +1194,19 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
             break;
         }
         case BLOCK_THINK: {
-            string thinkMsg = block->textData;
-            if (thinkMsg.substr(0, 6) == "think ") thinkMsg = thinkMsg.substr(6);
+            string thinkMsg = block->inputText[0] != '\0' ? string(block->inputText) : "Hmm...";
             if (thinkMsg.empty()) thinkMsg = "Hmm...";
             s->thinkText = thinkMsg;
-            s->thinkEndTime = SDL_GetTicks() + 99999999u;
+            s->thinkEndTime = SDL_GetTicks() + 4000u;
             s->sayText = "";
             s->sayEndTime = 0;
             break;
         }
         case BLOCK_THINK_FOR_SECONDS: {
-            float secs = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
-            if (secs <= 0) secs = 2.0f;
-            string thinkMsg = block->textData;
-            if (thinkMsg.substr(0, 6) == "think ") thinkMsg = thinkMsg.substr(6);
-            size_t forPos = thinkMsg.rfind(" for ");
-            if (forPos != string::npos) thinkMsg = thinkMsg.substr(0, forPos);
+            string thinkMsg = block->inputText[0] != '\0' ? string(block->inputText) : "Hmm...";
             if (thinkMsg.empty()) thinkMsg = "Hmm...";
+            float secs = strlen(block->inputText2) > 0 ? atof(block->inputText2) : block->value;
+            if (secs <= 0) secs = 4.0f;
             s->thinkText = thinkMsg;
             s->sayText = "";
             s->sayEndTime = 0;
@@ -1132,6 +1220,34 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                         break;
                     }
                     if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) { sensing->stopRequested = true; }
+                    if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                        if (g_engine && isClickInRect(ev.button.x, ev.button.y, g_stopRect))
+                            sensing->stopRequested = true;
+                        if (g_engine && isClickInRect(ev.button.x, ev.button.y, g_pauseRect))
+                            sensing->isPaused = !sensing->isPaused;
+                    }
+                }
+                while (sensing->isPaused && !sensing->stopRequested) {
+                    SDL_Event pev;
+                    while (SDL_PollEvent(&pev)) {
+                        if (pev.type == SDL_QUIT) {
+                            sensing->stopRequested = true;
+                            break;
+                        }
+                        if (pev.type == SDL_MOUSEBUTTONDOWN && pev.button.button == SDL_BUTTON_LEFT) {
+                            if (g_engine && isClickInRect(pev.button.x, pev.button.y, g_pauseRect))
+                                sensing->isPaused = false;
+                            if (g_engine && isClickInRect(pev.button.x, pev.button.y, g_stopRect)) {
+                                sensing->stopRequested = true;
+                                sensing->isPaused = false;
+                            }
+                        }
+                        if (pev.type == SDL_KEYDOWN && pev.key.keysym.sym == SDLK_ESCAPE) {
+                            sensing->stopRequested = true;
+                            sensing->isPaused = false;
+                        }
+                    }
+                    if (g_engine) render(g_engine); else SDL_Delay(16);
                 }
                 SDL_Delay(16);
                 if (g_engine) render(g_engine); else SDL_RenderPresent(renderer);
@@ -1194,16 +1310,37 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
         case BLOCK_PLAY_SOUND_UNTIL_DONE:
             if (meowSound) {
                 Mix_VolumeChunk(meowSound, (int) (s->volume * MIX_MAX_VOLUME / 100.0));
-                int channel = Mix_PlayChannel(-1, meowSound, 0);
-                while (Mix_Playing(channel) && !sensing->stopRequested) {
-                    SDL_Delay(100);
-                    SDL_RenderPresent(renderer);
+                int channel = Mix_PlayChannel(-1, meowSound, -1);
+                while (!sensing->stopRequested) {
+                    SDL_Event ev;
+                    while (SDL_PollEvent(&ev)) {
+                        if (ev.type == SDL_QUIT) {
+                            sensing->stopRequested = true;
+                            break;
+                        }
+                        if (ev.type == SDL_KEYDOWN &&
+                            ev.key.keysym.sym == SDLK_ESCAPE) { sensing->stopRequested = true; }
+                    }
+                    SDL_Delay(16);
+                    if (g_engine) render(g_engine); else SDL_RenderPresent(renderer);
                 }
+                if (channel >= 0) Mix_HaltChannel(channel);
             }
             break;
         case BLOCK_STOP_ALL_SOUNDS:
             Mix_HaltChannel(-1);
             break;
+        case BLOCK_PLAY_MY_SOUND: {
+            string soundPath = block->textData;
+            if (!soundPath.empty() && soundPath != "(click to select)") {
+                Mix_Chunk *chunk = Mix_LoadWAV(soundPath.c_str());
+                if (chunk) {
+                    Mix_VolumeChunk(chunk, (int) (s->volume * MIX_MAX_VOLUME / 100.0));
+                    Mix_PlayChannel(-1, chunk, 0);
+                }
+            }
+            break;
+        }
         case BLOCK_CHANGE_VOLUME: {
             float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
             s->volume += delta;
@@ -1219,10 +1356,17 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
         case BLOCK_WHEN_GREEN_FLAG:
         case BLOCK_WHEN_KEY_PRESSED:
         case BLOCK_WHEN_SPRITE_CLICKED:
+        case BLOCK_WHEN_BROADCAST_RECEIVED:
             break;
         case BLOCK_BROADCAST:
-        case BLOCK_BROADCAST_AND_WAIT:
+        case BLOCK_BROADCAST_AND_WAIT: {
+            string msgName = block->inputText[0] != '\0' ? string(block->inputText) : "message1";
+            if (msgName.empty()) msgName = "message1";
+            sensing->pendingBroadcasts.push_back(msgName);
+            sensing->lastBroadcast = msgName;
+            printf("[INFO] Broadcast sent: '%s'\n", msgName.c_str());
             break;
+        }
         case BLOCK_WAIT: {
             float seconds = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
             if (seconds <= 0) seconds = 1.0f;
@@ -1235,15 +1379,37 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                         break;
                     }
                     if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
-                        int stopX = stageRect.x + 60, stopY = stageRect.y + 10;
-                        if (ev.button.x >= stopX && ev.button.x <= stopX + 40 &&
-                            ev.button.y >= stopY && ev.button.y <= stopY + 40) {
+                        if (g_engine && isClickInRect(ev.button.x, ev.button.y, g_stopRect))
                             sensing->stopRequested = true;
+                        if (g_engine && isClickInRect(ev.button.x, ev.button.y, g_pauseRect))
+                            sensing->isPaused = !sensing->isPaused;
+                    }
+                    if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) sensing->stopRequested = true;
+                }
+                while (sensing->isPaused && !sensing->stopRequested) {
+                    SDL_Event pev;
+                    while (SDL_PollEvent(&pev)) {
+                        if (pev.type == SDL_QUIT) {
+                            sensing->stopRequested = true;
+                            break;
+                        }
+                        if (pev.type == SDL_MOUSEBUTTONDOWN && pev.button.button == SDL_BUTTON_LEFT) {
+                            if (g_engine && isClickInRect(pev.button.x, pev.button.y, g_pauseRect))
+                                sensing->isPaused = false;
+                            if (g_engine && isClickInRect(pev.button.x, pev.button.y, g_stopRect)) {
+                                sensing->stopRequested = true;
+                                sensing->isPaused = false;
+                            }
+                        }
+                        if (pev.type == SDL_KEYDOWN && pev.key.keysym.sym == SDLK_ESCAPE) {
+                            sensing->stopRequested = true;
+                            sensing->isPaused = false;
                         }
                     }
+                    if (g_engine) render(g_engine); else SDL_Delay(16);
                 }
                 SDL_Delay(10);
-                SDL_RenderPresent(renderer);
+                if (g_engine) render(g_engine); else SDL_RenderPresent(renderer);
             }
             break;
         }
@@ -1275,7 +1441,29 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                 }
             }
             for (int i = 0; i < count && !sensing->stopRequested; i++) {
-                while (sensing->isPaused && !sensing->stopRequested) { SDL_Delay(16); }
+                while (sensing->isPaused && !sensing->stopRequested) {
+                    SDL_Event pauseEv;
+                    while (SDL_PollEvent(&pauseEv)) {
+                        if (pauseEv.type == SDL_QUIT) {
+                            sensing->stopRequested = true;
+                            break;
+                        }
+                        if (pauseEv.type == SDL_MOUSEBUTTONDOWN && pauseEv.button.button == SDL_BUTTON_LEFT) {
+                            if (g_engine && isClickInRect(pauseEv.button.x, pauseEv.button.y, g_pauseRect)) {
+                                sensing->isPaused = false;
+                            }
+                            if (g_engine && isClickInRect(pauseEv.button.x, pauseEv.button.y, g_stopRect)) {
+                                sensing->stopRequested = true;
+                                sensing->isPaused = false;
+                            }
+                        }
+                        if (pauseEv.type == SDL_KEYDOWN && pauseEv.key.keysym.sym == SDLK_ESCAPE) {
+                            sensing->stopRequested = true;
+                            sensing->isPaused = false;
+                        }
+                    }
+                    if (g_engine) render(g_engine); else SDL_Delay(16);
+                }
                 SDL_Event ev;
                 while (SDL_PollEvent(&ev)) {
                     if (ev.type == SDL_QUIT) {
@@ -1283,10 +1471,11 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                         break;
                     }
                     if (ev.type == SDL_MOUSEBUTTONDOWN) {
-                        int stopX = stageRect.x + 60, stopY = stageRect.y + 10;
-                        if (ev.button.x >= stopX && ev.button.x <= stopX + 40 &&
-                            ev.button.y >= stopY && ev.button.y <= stopY + 40) {
+                        if (g_engine && isClickInRect(ev.button.x, ev.button.y, g_stopRect)) {
                             sensing->stopRequested = true;
+                        }
+                        if (g_engine && isClickInRect(ev.button.x, ev.button.y, g_pauseRect)) {
+                            sensing->isPaused = !sensing->isPaused;
                         }
                     }
                     if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) { sensing->stopRequested = true; }
@@ -1322,7 +1511,29 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
             }
             int watchdog = 0;
             while (!sensing->stopRequested) {
-                while (sensing->isPaused && !sensing->stopRequested) { SDL_Delay(16); }
+                while (sensing->isPaused && !sensing->stopRequested) {
+                    SDL_Event pauseEv;
+                    while (SDL_PollEvent(&pauseEv)) {
+                        if (pauseEv.type == SDL_QUIT) {
+                            sensing->stopRequested = true;
+                            break;
+                        }
+                        if (pauseEv.type == SDL_MOUSEBUTTONDOWN && pauseEv.button.button == SDL_BUTTON_LEFT) {
+                            if (g_engine && isClickInRect(pauseEv.button.x, pauseEv.button.y, g_pauseRect)) {
+                                sensing->isPaused = false;
+                            }
+                            if (g_engine && isClickInRect(pauseEv.button.x, pauseEv.button.y, g_stopRect)) {
+                                sensing->stopRequested = true;
+                                sensing->isPaused = false;
+                            }
+                        }
+                        if (pauseEv.type == SDL_KEYDOWN && pauseEv.key.keysym.sym == SDLK_ESCAPE) {
+                            sensing->stopRequested = true;
+                            sensing->isPaused = false;
+                        }
+                    }
+                    if (g_engine) render(g_engine); else SDL_Delay(16);
+                }
                 watchdog++;
                 SDL_Event ev;
                 while (SDL_PollEvent(&ev)) {
@@ -1331,15 +1542,13 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
                         break;
                     }
                     if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
-                        int stopX = stageRect.x + 60, stopY = stageRect.y + 10;
-                        if (ev.button.x >= stopX && ev.button.x <= stopX + 40 &&
-                            ev.button.y >= stopY && ev.button.y <= stopY + 40) {
-                            sensing->stopRequested = true;
-                        }
-                        int pauseX = stageRect.x + 110, pauseY = stageRect.y + 10;
-                        if (ev.button.x >= pauseX && ev.button.x <= pauseX + 40 &&
-                            ev.button.y >= pauseY && ev.button.y <= pauseY + 40) {
-                            sensing->isPaused = !sensing->isPaused;
+                        if (g_engine) {
+                            if (isClickInRect(ev.button.x, ev.button.y, g_stopRect)) {
+                                sensing->stopRequested = true;
+                            }
+                            if (isClickInRect(ev.button.x, ev.button.y, g_pauseRect)) {
+                                sensing->isPaused = !sensing->isPaused;
+                            }
                         }
                     }
                     if (ev.type == SDL_KEYDOWN) {
@@ -1479,6 +1688,39 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
             s->draggable = (mode != 0);
             break;
         }
+        case BLOCK_RESET_TIMER:
+            SensingData_resetTimer(sensing);
+            printf("[INFO] Timer reset\n");
+            break;
+        case BLOCK_DISTANCE_TO: {
+            float dx = 0, dy = 0;
+            string target = block->textData;
+            if (target.find("mouse") != string::npos) {
+                dx = sensing->mouseX - stageRect.x - s->x;
+                dy = sensing->mouseY - stageRect.y - s->y;
+            }
+            float dist = sqrt(dx * dx + dy * dy);
+            printf("[INFO] Distance to '%s' = %.2f\n", target.c_str(), dist);
+            break;
+        }
+        case BLOCK_LETTER_OF: {
+            if (block->operatorInputs.size() >= 2) {
+                int idx = (int) atof(block->operatorInputs[0]->inputText) - 1;
+                string text = string(block->operatorInputs[1]->inputText);
+                if (idx >= 0 && idx < (int) text.length())
+                    printf("[INFO] Letter %d of '%s' = '%c'\n", idx + 1, text.c_str(), text[idx]);
+                else
+                    printf("[INFO] Letter %d of '%s' = (out of range)\n", idx + 1, text.c_str());
+            }
+            break;
+        }
+        case BLOCK_JOIN_STRINGS2:
+        case BLOCK_JOIN_STRINGS: {
+            string s1 = block->operatorInputs.size() >= 1 ? string(block->operatorInputs[0]->inputText) : "";
+            string s2 = block->operatorInputs.size() >= 2 ? string(block->operatorInputs[1]->inputText) : "";
+            printf("[INFO] Join: '%s' + '%s' = '%s'\n", s1.c_str(), s2.c_str(), (s1 + s2).c_str());
+            break;
+        }
         case BLOCK_PEN_DOWN:
             s->isPenDown = true;
             break;
@@ -1533,44 +1775,36 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
             SDL_SetRenderTarget(renderer, NULL);
             break;
         }
+        case BLOCK_SET_PEN_BRIGHTNESS: {
+            float newBrightness = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->penBrightness = max(0.0f, min(newBrightness, 200.0f));
+            break;
+        }
+        case BLOCK_SET_PEN_SATURATION: {
+            float newSaturation = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
+            s->penSaturation = max(0.0f, min(newSaturation, 200.0f));
+            break;
+        }
         case BLOCK_CHANGE_BRIGHTNESS: {
             float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
             s->brightness += delta;
             s->brightness = max(0.0f, min(s->brightness, 200.0f));
-            float bf = s->brightness / 100.0f;
-            s->penColor.r = (Uint8) min(255.0f, s->penColor.r * bf);
-            s->penColor.g = (Uint8) min(255.0f, s->penColor.g * bf);
-            s->penColor.b = (Uint8) min(255.0f, s->penColor.b * bf);
             break;
         }
         case BLOCK_SET_BRIGHTNESS: {
             float newBrightness = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
             s->brightness = max(0.0f, min(newBrightness, 200.0f));
-            float bf = s->brightness / 100.0f;
-            s->penColor.r = (Uint8) min(255.0f, s->penColor.r * bf);
-            s->penColor.g = (Uint8) min(255.0f, s->penColor.g * bf);
-            s->penColor.b = (Uint8) min(255.0f, s->penColor.b * bf);
             break;
         }
         case BLOCK_CHANGE_SATURATION: {
             float delta = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
             s->saturation += delta;
             s->saturation = max(0.0f, min(s->saturation, 200.0f));
-            float gray = 0.299f * s->penColor.r + 0.587f * s->penColor.g + 0.114f * s->penColor.b;
-            float sf = s->saturation / 100.0f;
-            s->penColor.r = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.r - gray)));
-            s->penColor.g = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.g - gray)));
-            s->penColor.b = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.b - gray)));
             break;
         }
         case BLOCK_SET_SATURATION: {
             float newSaturation = strlen(block->inputText) > 0 ? atof(block->inputText) : block->value;
             s->saturation = max(0.0f, min(newSaturation, 200.0f));
-            float gray = 0.299f * s->penColor.r + 0.587f * s->penColor.g + 0.114f * s->penColor.b;
-            float sf = s->saturation / 100.0f;
-            s->penColor.r = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.r - gray)));
-            s->penColor.g = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.g - gray)));
-            s->penColor.b = (Uint8) min(255.0f, max(0.0f, gray + sf * (s->penColor.b - gray)));
             break;
         }
         case BLOCK_SET_VARIABLE: {
@@ -1633,6 +1867,7 @@ bool Block_execute(Block *block, struct Sprite *s, SDL_Renderer *renderer, SDL_T
     }
     return true;
 }
+
 struct Button {
     SDL_Rect rect;
     string label;
@@ -1702,6 +1937,23 @@ struct ScratchEngine {
     bool showMakeVariablePopup;
     char makeVarName[64];
     bool makeVarEditingName;
+    struct UndoAction {
+        enum Type {
+            ADD_BLOCK, REMOVE_BLOCK, MOVE_BLOCK
+        } type;
+        Block *block;
+        int prevX, prevY;
+        int prevParentIdx;
+    };
+    static const int MAX_UNDO = 20;
+    vector<UndoAction> undoStack;
+    string editingVarName;
+    char editVarValue[32];
+    bool isEditingVar;
+    bool isEditingVarValue;
+    char editVarValueBuf[64];
+    vector<SDL_Rect> varDisplayRects;
+    vector<string> varDisplayNames;
 };
 
 void showMakeBlockDialog(struct ScratchEngine *engine) {
@@ -1802,8 +2054,7 @@ void showMakeBlockDialog(struct ScratchEngine *engine) {
                         confirmed = true;
                         editing = false;
                     }
-                }
-                else if (ev.key.keysym.sym == SDLK_BACKSPACE) {
+                } else if (ev.key.keysym.sym == SDLK_BACKSPACE) {
                     int len = strlen(blockName);
                     if (len > 0) blockName[len - 1] = '\0';
                 }
@@ -1906,8 +2157,7 @@ void showMakeVariableDialog(struct ScratchEngine *engine) {
                 else if (ev.key.keysym.sym == SDLK_RETURN) {
                     confirmed = true;
                     editing = false;
-                }
-                else if (ev.key.keysym.sym == SDLK_BACKSPACE) {
+                } else if (ev.key.keysym.sym == SDLK_BACKSPACE) {
                     int len = strlen(varName);
                     if (len > 0) varName[len - 1] = '\0';
                 }
@@ -1933,6 +2183,24 @@ void showMakeVariableDialog(struct ScratchEngine *engine) {
     SDL_StopTextInput();
     if (confirmed && strlen(varName) > 0) {
         string vn = string(varName);
+        if (engine->globalVariables.count(vn) > 0) {
+            bool errShowing = true;
+            Uint32 errStart = SDL_GetTicks();
+            while (errShowing && SDL_GetTicks() - errStart < 2500) {
+                SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+                SDL_SetRenderDrawColor(engine->m_renderer, 200, 50, 50, 220);
+                SDL_Rect errRect = {engine->winWidth / 2 - 160, engine->winHeight / 2 - 30, 320, 60};
+                SDL_RenderFillRect(engine->m_renderer, &errRect);
+                drawText(engine, "Variable already exists!", errRect.x + 20, errRect.y + 20, {255, 255, 255, 255});
+                SDL_RenderPresent(engine->m_renderer);
+                SDL_Event errEv;
+                while (SDL_PollEvent(&errEv)) {
+                    if (errEv.type == SDL_MOUSEBUTTONDOWN || errEv.type == SDL_KEYDOWN) errShowing = false;
+                }
+                SDL_Delay(16);
+            }
+            return;
+        }
         engine->globalVariables[vn] = 0;
         if (!engine->sprites.empty()) {
             engine->sprites[engine->activeSpriteIndex].variables[vn] = 0;
@@ -1979,6 +2247,11 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     engine->showMakeVariablePopup = false;
     memset(engine->makeVarName, 0, sizeof(engine->makeVarName));
     engine->makeVarEditingName = false;
+    engine->isEditingVar = false;
+    memset(engine->editVarValue, 0, sizeof(engine->editVarValue));
+    engine->editingVarName = "";
+    engine->isEditingVarValue = false;
+    memset(engine->editVarValueBuf, 0, sizeof(engine->editVarValueBuf));
     engine->currentBackgroundName = "Default";
     engine->currentBackgroundIndex = 0;
     engine->textInputActive = false;
@@ -2031,6 +2304,8 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     engine->greenFlagRect = {engine->catPanelRect.x + 10, engine->catPanelRect.y + 10, 40, 40};
     engine->stopRect = {engine->catPanelRect.x + 60, engine->catPanelRect.y + 10, 40, 40};
     engine->pauseRect = {engine->catPanelRect.x + 110, engine->catPanelRect.y + 10, 40, 40};
+    g_pauseRect = engine->pauseRect;
+    g_stopRect = engine->stopRect;
     engine->blocksAreaRect = {engine->blocksPanelRect.x + 45, engine->blocksPanelRect.y + 45,
                               blocksPanelWidth - 55, engine->winHeight - 200};
     Button newBtn;
@@ -2086,6 +2361,7 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     bgBtn.textColor = {255, 255, 255, 255};
     bgBtn.actionID = 104;
     engine->buttons.push_back(bgBtn);
+
     int buttonSize = 25;
     int startX = engine->blocksPanelRect.x + 15;
     int startY = engine->blocksPanelRect.y + 45;
@@ -2140,10 +2416,10 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     motionBlocks.push_back(Block_create(BLOCK_IF_ON_EDGE_BOUNCE, 0, "if on edge, bounce"));
     engine->paletteBlocks[BLOCK_CATEGORY_MOTION] = motionBlocks;
     vector<Block *> looksBlocks;
-    looksBlocks.push_back(Block_create(BLOCK_SAY, 0, "say Hello"));
-    looksBlocks.push_back(Block_create(BLOCK_SAY_FOR_SECONDS, 2, "say Hello for 2 secs"));
-    looksBlocks.push_back(Block_create(BLOCK_THINK, 0, "think Hmm..."));
-    looksBlocks.push_back(Block_create(BLOCK_THINK_FOR_SECONDS, 2, "think for 2 secs"));
+    looksBlocks.push_back(Block_create(BLOCK_SAY, 0, "say"));
+    looksBlocks.push_back(Block_create(BLOCK_SAY_FOR_SECONDS, 2, "say for secs"));
+    looksBlocks.push_back(Block_create(BLOCK_THINK, 0, "think"));
+    looksBlocks.push_back(Block_create(BLOCK_THINK_FOR_SECONDS, 2, "think for secs"));
     looksBlocks.push_back(Block_create(BLOCK_SHOW, 0, "show"));
     looksBlocks.push_back(Block_create(BLOCK_HIDE, 0, "hide"));
     looksBlocks.push_back(Block_create(BLOCK_SET_SIZE, 100, "set size to ...%"));
@@ -2156,10 +2432,15 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     looksBlocks.push_back(Block_create(BLOCK_FLIP_VERTICAL, 0, "flip vertical"));
     looksBlocks.push_back(Block_create(BLOCK_GO_TO_FRONT, 0, "go to front"));
     looksBlocks.push_back(Block_create(BLOCK_GO_BACK_LAYERS, 1, "go back 1 layer"));
+    looksBlocks.push_back(Block_create(BLOCK_SET_BRIGHTNESS, 100, "set brightness to"));
+    looksBlocks.push_back(Block_create(BLOCK_CHANGE_BRIGHTNESS, 10, "change brightness by"));
+    looksBlocks.push_back(Block_create(BLOCK_SET_SATURATION, 100, "set saturation to"));
+    looksBlocks.push_back(Block_create(BLOCK_CHANGE_SATURATION, 10, "change saturation by"));
     engine->paletteBlocks[BLOCK_CATEGORY_LOOKS] = looksBlocks;
     vector<Block *> soundBlocks;
     soundBlocks.push_back(Block_create(BLOCK_PLAY_SOUND, 0, "play sound pop"));
     soundBlocks.push_back(Block_create(BLOCK_PLAY_SOUND_MEOW, 0, "play sound meow"));
+    soundBlocks.push_back(Block_create(BLOCK_PLAY_MY_SOUND, 0, "play my sound"));
     soundBlocks.push_back(Block_create(BLOCK_PLAY_SOUND_UNTIL_DONE, 0, "play sound until done"));
     soundBlocks.push_back(Block_create(BLOCK_STOP_ALL_SOUNDS, 0, "stop all sounds"));
     soundBlocks.push_back(Block_create(BLOCK_CHANGE_VOLUME, 10, "change volume by "));
@@ -2167,10 +2448,11 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     engine->paletteBlocks[BLOCK_CATEGORY_SOUND] = soundBlocks;
     vector<Block *> eventsBlocks;
     eventsBlocks.push_back(Block_create(BLOCK_WHEN_GREEN_FLAG, 0, "when flag clicked"));
-    eventsBlocks.push_back(Block_create(BLOCK_WHEN_KEY_PRESSED, 0, "when space pressed"));
+    eventsBlocks.push_back(Block_create(BLOCK_WHEN_KEY_PRESSED, 0, "when key pressed"));
     eventsBlocks.push_back(Block_create(BLOCK_WHEN_SPRITE_CLICKED, 0, "when this sprite clicked"));
-    eventsBlocks.push_back(Block_create(BLOCK_BROADCAST, 0, "broadcast message"));
+    eventsBlocks.push_back(Block_create(BLOCK_BROADCAST, 0, "broadcast"));
     eventsBlocks.push_back(Block_create(BLOCK_BROADCAST_AND_WAIT, 0, "broadcast and wait"));
+    eventsBlocks.push_back(Block_create(BLOCK_WHEN_BROADCAST_RECEIVED, 0, "when I receive"));
     engine->paletteBlocks[BLOCK_CATEGORY_EVENTS] = eventsBlocks;
     vector<Block *> controlBlocks;
     controlBlocks.push_back(Block_create(BLOCK_REPEAT, 4, "repeat 4"));
@@ -2217,6 +2499,12 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     operatorsBlocks.push_back(Block_create(BLOCK_SQRT, 0, "sqrt"));
     operatorsBlocks.push_back(Block_create(BLOCK_SIN, 0, "sin"));
     operatorsBlocks.push_back(Block_create(BLOCK_COS, 0, "cos"));
+    operatorsBlocks.push_back(Block_create(BLOCK_XOR, 0, "xor"));
+    operatorsBlocks.push_back(Block_create(BLOCK_FLOOR, 0, "floor"));
+    operatorsBlocks.push_back(Block_create(BLOCK_LETTER_OF, 0, "letter of"));
+    operatorsBlocks.back()->hasInput = true;
+    operatorsBlocks.push_back(Block_create(BLOCK_JOIN_STRINGS2, 0, "join strings"));
+    operatorsBlocks.back()->hasInput = true;
     engine->paletteBlocks[BLOCK_CATEGORY_OPERATORS] = operatorsBlocks;
     vector<Block *> variablesBlocks;
     variablesBlocks.push_back(Block_create(BLOCK_SET_VARIABLE, 0, "set my variable to"));
@@ -2234,11 +2522,11 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
     penBlocks.push_back(Block_create(BLOCK_CHANGE_PEN_COLOR, 10, "change pen color by 10"));
     penBlocks.push_back(Block_create(BLOCK_SET_PEN_SIZE, 1, "set pen size to 1"));
     penBlocks.push_back(Block_create(BLOCK_CHANGE_PEN_SIZE, 1, "change pen size by 1"));
-    penBlocks.push_back(Block_create(BLOCK_SET_BRIGHTNESS, 50, "set brightness to 50"));
-    penBlocks.push_back(Block_create(BLOCK_CHANGE_BRIGHTNESS, 10, "change brightness by 10"));
-    penBlocks.push_back(Block_create(BLOCK_SET_SATURATION, 50, "set saturation to 50"));
-    penBlocks.push_back(Block_create(BLOCK_CHANGE_SATURATION, 10, "change saturation by 10"));
     penBlocks.push_back(Block_create(BLOCK_STAMP, 0, "stamp"));
+    penBlocks.push_back(Block_create(BLOCK_SET_PEN_BRIGHTNESS, 100, "set pen brightness to"));
+    penBlocks.back()->hasInput = true;
+    penBlocks.push_back(Block_create(BLOCK_SET_PEN_SATURATION, 100, "set pen saturation to"));
+    penBlocks.back()->hasInput = true;
     engine->paletteBlocks[BLOCK_CATEGORY_PEN] = penBlocks;
     engine->blocksMaxScroll = 0;
     if (engine->paletteBlocks.find(engine->activeCategory) != engine->paletteBlocks.end()) {
@@ -2254,25 +2542,14 @@ void ScratchEngine_init(struct ScratchEngine *engine) {
 
 void ScratchEngine_destroy(struct ScratchEngine *engine) {
     for (auto &pair: engine->paletteBlocks) {
-        for (auto block: pair.second)
-            Block_destroy(block);
+        for (auto block: pair.second) { Block_destroy(block); }
     }
-    for (auto block: engine->codeBlocks) {
-        Block_destroy(block);
-    }
-    for (auto &s: engine->sprites) {
-        Sprite_destroy(&s);
-    }
-    if (engine->meowSound)
-        Mix_FreeChunk(engine->meowSound);
-    if (engine->popSound)
-        Mix_FreeChunk(engine->popSound);
-    if (engine->m_font)
-        TTF_CloseFont(engine->m_font);
-    for (auto tex: engine->backgroundTextures) {
-        if (tex)
-            SDL_DestroyTexture(tex);
-    }
+    for (auto block: engine->codeBlocks) { Block_destroy(block); }
+    for (auto &s: engine->sprites) { Sprite_destroy(&s); }
+    if (engine->meowSound) Mix_FreeChunk(engine->meowSound);
+    if (engine->popSound) Mix_FreeChunk(engine->popSound);
+    if (engine->m_font) TTF_CloseFont(engine->m_font);
+    for (auto tex: engine->backgroundTextures) { if (tex) SDL_DestroyTexture(tex); }
     SDL_DestroyTexture(engine->penLayer);
     SDL_DestroyRenderer(engine->m_renderer);
     SDL_DestroyWindow(engine->m_window);
@@ -2527,11 +2804,29 @@ void drawBlock(struct ScratchEngine *engine, Block *block, int offsetX = 0, int 
         SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 200);
         SDL_RenderDrawRect(engine->m_renderer, &block->colorPickerRect);
     } else if (block->hasSecondInput) {
-        drawText(engine, "go to x:", renderRect.x + 4,
-                 renderRect.y + renderRect.h / 2, {255, 255, 255, 255}, false);
-        block->inputRect.x = block->rect.x + 60;
+        string label1, sep, label2;
+        if (block->type == BLOCK_GOTO_X_Y) {
+            label1 = "go to x:";
+            sep = "y:";
+            label2 = "";
+        } else if (block->type == BLOCK_SAY_FOR_SECONDS) {
+            label1 = "say";
+            sep = "for";
+            label2 = "secs";
+        } else if (block->type == BLOCK_THINK_FOR_SECONDS) {
+            label1 = "think";
+            sep = "for";
+            label2 = "secs";
+        } else {
+            label1 = block->textData;
+            sep = "/";
+            label2 = "";
+        }
+        drawText(engine, label1, renderRect.x + 4, renderRect.y + renderRect.h / 2, {255, 255, 255, 255}, false);
+        int label1W = (int) label1.size() * 7 + 6;
+        block->inputRect.x = block->rect.x + label1W;
         block->inputRect.y = block->rect.y + 7;
-        block->inputRect.w = 40;
+        block->inputRect.w = 60;
         block->inputRect.h = 26;
         SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
         SDL_RenderFillRect(engine->m_renderer, &block->inputRect);
@@ -2544,9 +2839,10 @@ void drawBlock(struct ScratchEngine *engine, Block *block, int offsetX = 0, int 
         drawText(engine, block->inputText,
                  block->inputRect.x + block->inputRect.w / 2,
                  block->inputRect.y + block->inputRect.h / 2, {0, 0, 0, 255}, true);
-        drawText(engine, "y:", renderRect.x + 108,
-                 renderRect.y + renderRect.h / 2, {255, 255, 255, 255}, false);
-        block->inputRect2.x = block->rect.x + 122;
+        int sepX = block->inputRect.x + block->inputRect.w + 2;
+        drawText(engine, sep, sepX, renderRect.y + renderRect.h / 2, {255, 255, 255, 255}, false);
+        int sepW = (int) sep.size() * 7 + 4;
+        block->inputRect2.x = sepX + sepW;
         block->inputRect2.y = block->rect.y + 7;
         block->inputRect2.w = 40;
         block->inputRect2.h = 26;
@@ -2561,6 +2857,10 @@ void drawBlock(struct ScratchEngine *engine, Block *block, int offsetX = 0, int 
         drawText(engine, block->inputText2,
                  block->inputRect2.x + block->inputRect2.w / 2,
                  block->inputRect2.y + block->inputRect2.h / 2, {0, 0, 0, 255}, true);
+        if (!label2.empty()) {
+            drawText(engine, label2, block->inputRect2.x + block->inputRect2.w + 3,
+                     renderRect.y + renderRect.h / 2, {255, 255, 255, 255}, false);
+        }
     } else if (block->hasInput) {
         if (block->type == BLOCK_WHEN_KEY_PRESSED) {
             drawText(engine, "when", renderRect.x + 4,
@@ -2583,10 +2883,23 @@ void drawBlock(struct ScratchEngine *engine, Block *block, int offsetX = 0, int 
             drawText(engine, "pressed", renderRect.x + 106,
                      renderRect.y + renderRect.h / 2, {255, 255, 255, 255}, false);
         } else {
-            drawText(engine, block->textData, renderRect.x + (renderRect.w - 55) / 2,
-                     renderRect.y + renderRect.h / 2, {255, 255, 255, 255}, true);
-            block->inputRect.x = block->rect.x + block->rect.w - 55;
+            string labelTxt = "";
+            if (block->type == BLOCK_SAY) labelTxt = "say";
+            else if (block->type == BLOCK_THINK) labelTxt = "think";
+            else if (block->type == BLOCK_BROADCAST) labelTxt = "broadcast";
+            else if (block->type == BLOCK_BROADCAST_AND_WAIT) labelTxt = "broadcast+wait";
+            else if (block->type == BLOCK_WHEN_BROADCAST_RECEIVED) labelTxt = "when I receive";
+            else if (block->type == BLOCK_PLAY_MY_SOUND) labelTxt = "play";
+            else if (block->type == BLOCK_SET_PEN_BRIGHTNESS) labelTxt = "pen bright%";
+            else if (block->type == BLOCK_SET_PEN_SATURATION) labelTxt = "pen sat%";
+            else labelTxt = block->textData;
+            int labelW = (int) labelTxt.size() * 7 + 6;
+            int inputW = max(50, renderRect.w - labelW - 12);
+            drawText(engine, labelTxt, renderRect.x + 4, renderRect.y + renderRect.h / 2, {255, 255, 255, 255}, false);
+            block->inputRect.x = block->rect.x + labelW + 4;
             block->inputRect.y = block->rect.y + 5;
+            block->inputRect.w = inputW;
+            block->inputRect.h = renderRect.h - 10;
             SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
             SDL_RenderFillRect(engine->m_renderer, &block->inputRect);
             SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 255);
@@ -2610,6 +2923,7 @@ void drawBlock(struct ScratchEngine *engine, Block *block, int offsetX = 0, int 
                              renderRect.y + renderRect.h + 3, resW, 20};
         SDL_Color resColor = (block->lastResult == "true") ? SDL_Color{0, 200, 0, 220} :
                              (block->lastResult == "false") ? SDL_Color{200, 0, 0, 220} :
+                             (block->lastResult.find("ERR") != string::npos) ? SDL_Color{220, 50, 50, 220} :
                              SDL_Color{255, 220, 0, 220};
         SDL_SetRenderDrawColor(engine->m_renderer, resColor.r, resColor.g, resColor.b, resColor.a);
         SDL_RenderFillRect(engine->m_renderer, &block->resultRect);
@@ -2641,11 +2955,10 @@ void drawSprite(struct ScratchEngine *engine, struct Sprite *s, int panelX, int 
         int newW = (int) (w * scale);
         int newH = (int) (h * scale);
         SDL_Rect dest = {drawX - newW / 2, drawY - newH / 2, newW, newH};
-        SDL_SetTextureColorMod(s->costume,
-                               (Uint8) (255 * s->brightness / 100),
-                               (Uint8) (255 * s->brightness / 100),
-                               (Uint8) (255 * s->brightness / 100));
+        Uint8 bval = (Uint8) min(255.0f, 255.0f * s->brightness / 100.0f);
+        SDL_SetTextureColorMod(s->costume, bval, bval, bval);
         SDL_RenderCopyEx(engine->m_renderer, s->costume, NULL, &dest, s->angle, NULL, s->flip);
+        SDL_SetTextureColorMod(s->costume, 255, 255, 255);
     } else {
         SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 255, 255);
         int radius = 20;
