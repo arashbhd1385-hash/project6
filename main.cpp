@@ -2283,6 +2283,70 @@ void ScratchEngine_destroy(struct ScratchEngine *engine) {
     SDL_Quit();
 }
 
+void drawText(struct ScratchEngine *engine, const string &text, int x, int y, SDL_Color color, bool center) {
+    if (!engine->m_font) return;
+    SDL_Surface *surface = TTF_RenderUTF8_Blended(engine->m_font, text.c_str(), color);
+    if (!surface) return;
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(engine->m_renderer, surface);
+    SDL_Rect dest;
+    if (center) {
+        dest = {x - surface->w / 2, y - surface->h / 2, surface->w, surface->h};
+    } else {
+        dest = {x, y, surface->w, surface->h};
+    }
+    SDL_RenderCopy(engine->m_renderer, texture, NULL, &dest);
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+}
+
+void drawRoundedRect(struct ScratchEngine *engine, SDL_Rect rect, SDL_Color color, int radius) {
+    SDL_SetRenderDrawColor(engine->m_renderer, color.r, color.g, color.b, color.a);
+    SDL_Rect mainRect = {
+            rect.x + radius,
+            rect.y,
+            rect.w - 2 * radius,
+            rect.h
+    };
+    SDL_RenderFillRect(engine->m_renderer, &mainRect);
+    SDL_Rect leftRect = {
+            rect.x,
+            rect.y + radius,
+            radius,
+            rect.h - 2 * radius
+    };
+    SDL_RenderFillRect(engine->m_renderer, &leftRect);
+    SDL_Rect rightRect = {
+            rect.x + rect.w - radius,
+            rect.y + radius,
+            radius,
+            rect.h - 2 * radius
+    };
+    SDL_RenderFillRect(engine->m_renderer, &rightRect);
+    auto drawCirclePoints = [&](int cx, int cy, int r) {
+        for (int dy = -r; dy <= r; dy++) {
+            for (int dx = -r; dx <= r; dx++) {
+                if (dx * dx + dy * dy <= r * r) { SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy); }
+            }
+        }
+    };
+    drawCirclePoints(rect.x + radius, rect.y + radius, radius);
+    drawCirclePoints(rect.x + rect.w - radius, rect.y + radius, radius);
+    drawCirclePoints(rect.x + radius, rect.y + rect.h - radius, radius);
+    drawCirclePoints(rect.x + rect.w - radius, rect.y + rect.h - radius, radius);
+}
+
+void drawCircle(struct ScratchEngine *engine, SDL_Rect rect, SDL_Color color) {
+    SDL_SetRenderDrawColor(engine->m_renderer, color.r, color.g, color.b, color.a);
+    int radius = rect.w / 2;
+    int cx = rect.x + radius;
+    int cy = rect.y + radius;
+    for (int dy = -radius; dy <= radius; dy++) {
+        for (int dx = -radius; dx <= radius; dx++) {
+            if (dx * dx + dy * dy <= radius * radius) { SDL_RenderDrawPoint(engine->m_renderer, cx + dx, cy + dy); }
+        }
+    }
+}
+
 
 
 void renderFileMenu(struct ScratchEngine *engine) {
