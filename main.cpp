@@ -2675,6 +2675,98 @@ void renderCategoryButtons(struct ScratchEngine *engine) {
     }
 }
 
+
+void run(struct ScratchEngine *engine) {
+    SDL_Event e;
+    while (engine->running) {
+        SensingData_update(&engine->sensing);
+        while (SDL_PollEvent(&e)) {
+            if (e.type == SDL_QUIT) {
+                render(engine);
+//                bool cancelled = showSavePrompt(engine);
+//                if (!cancelled) engine->running = false;
+            }
+            if (e.type == SDL_WINDOWEVENT) {
+                if (e.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    SDL_GetWindowSize(engine->m_window, &engine->winWidth, &engine->winHeight);
+                    int blocksPanelWidth = 280;
+                    int rightPanelWidth = 450;
+                    int codeAreaWidth = engine->winWidth - blocksPanelWidth - rightPanelWidth;
+                    engine->blocksPanelRect = {0, 0, blocksPanelWidth, engine->winHeight};
+                    engine->rightPanelRect = {blocksPanelWidth + codeAreaWidth, 0, rightPanelWidth, engine->winHeight};
+                    engine->codeAreaRect = {blocksPanelWidth, 0, codeAreaWidth, engine->winHeight};
+                    int catPanelHeight = 400;
+                    int spritesPanelHeight = engine->winHeight - catPanelHeight;
+                    engine->catPanelRect = {engine->rightPanelRect.x, 0, engine->rightPanelRect.w, catPanelHeight};
+                    engine->spritesPanelRect = {engine->rightPanelRect.x, catPanelHeight, engine->rightPanelRect.w,
+                                                spritesPanelHeight};
+                    engine->fileMenuRect = {engine->blocksPanelRect.x + 10, engine->blocksPanelRect.y + 5, 100, 30};
+                    engine->greenFlagRect = {engine->catPanelRect.x + 10, engine->catPanelRect.y + 10, 40, 40};
+                    engine->stopRect = {engine->catPanelRect.x + 60, engine->catPanelRect.y + 10, 40, 40};
+                    engine->pauseRect = {engine->catPanelRect.x + 110, engine->catPanelRect.y + 10, 40, 40};
+                    engine->blocksAreaRect = {engine->blocksPanelRect.x + 45, engine->blocksPanelRect.y + 45,
+                                              blocksPanelWidth - 55, engine->winHeight - 200};
+                    for (size_t i = 0; i < engine->fileMenuButtons.size(); i++) {
+                        engine->fileMenuButtons[i].rect.x = engine->fileMenuRect.x;
+                        engine->fileMenuButtons[i].rect.y = engine->fileMenuRect.y + 35 + i * 35;
+                    }
+                    int buttonSize = 25;
+                    int startX = engine->blocksPanelRect.x + 15;
+                    int startY = engine->blocksPanelRect.y + 45;
+                    int spacing = 65;
+                    for (size_t i = 0; i < categories.size(); i++) {
+                        categories[i].buttonRect = {
+                                startX,
+                                startY + (int) i * spacing,
+                                buttonSize,
+                                buttonSize
+                        };
+                    }
+                    if (!engine->buttons.empty()) {
+                        engine->buttons[0].rect = {engine->spritesPanelRect.x + 10,
+                                                   engine->spritesPanelRect.y + engine->spritesPanelRect.h - 40, 180,
+                                                   30};
+                        engine->buttons[1].rect = {engine->spritesPanelRect.x + 10,
+                                                   engine->spritesPanelRect.y + engine->spritesPanelRect.h - 80, 180,
+                                                   30};
+                        engine->buttons[2].rect = {engine->spritesPanelRect.x + 10,
+                                                   engine->spritesPanelRect.y + engine->spritesPanelRect.h - 120, 180,
+                                                   30};
+                        if (engine->buttons.size() > 3)
+                            engine->buttons[3].rect = {engine->spritesPanelRect.x + 10,
+                                                       engine->spritesPanelRect.y + engine->spritesPanelRect.h - 160,
+                                                       180, 30};
+                    }
+                    for (int i = 0; i < 10 && i < engine->sprites.size(); i++) {
+                        engine->spriteRects[i] = {engine->spritesPanelRect.x + 10,
+                                                  engine->spritesPanelRect.y + 30 + i * 20, 200, 20};
+                    }
+                }
+            }
+//            handleDragAndDrop(engine, e);
+            if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+                for (auto &btn: engine->buttons) {
+                    if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, btn.rect)) {
+//                        handleAction(engine, btn.actionID);
+                        break;
+                    }
+                }
+                for (auto &btn: engine->fileMenuButtons) {
+                    if (engine->showFileMenu &&
+                        isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, btn.rect)) {
+//                        handleAction(engine, btn.actionID);
+                        break;
+                    }
+                }
+            }
+        }
+        render(engine);
+        SDL_Delay(16);
+    }
+    if (engine->textInputActive) { SDL_StopTextInput(); }
+}
+
+
 int main() {
 
     return 0;
