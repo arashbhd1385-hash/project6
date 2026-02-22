@@ -2631,6 +2631,61 @@ void drawBlock(struct ScratchEngine *engine, Block *block, int offsetX = 0, int 
     }
 }
 
+void drawSprite(struct ScratchEngine *engine, struct Sprite *s, int panelX, int panelY, int panelW, int panelH) {
+    int drawX = panelX + (int) s->x;
+    int drawY = panelY + (int) s->y;
+    if (s->costume) {
+        int w, h;
+        SDL_QueryTexture(s->costume, NULL, NULL, &w, &h);
+        float scale = min((float) panelW / w, (float) panelH / h) * (s->size / 100.0f);
+        int newW = (int) (w * scale);
+        int newH = (int) (h * scale);
+        SDL_Rect dest = {drawX - newW / 2, drawY - newH / 2, newW, newH};
+        SDL_SetTextureColorMod(s->costume,
+                               (Uint8) (255 * s->brightness / 100),
+                               (Uint8) (255 * s->brightness / 100),
+                               (Uint8) (255 * s->brightness / 100));
+        SDL_RenderCopyEx(engine->m_renderer, s->costume, NULL, &dest, s->angle, NULL, s->flip);
+    } else {
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 255, 255);
+        int radius = 20;
+        for (int dy = -radius; dy <= radius; dy++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                if (dx * dx + dy * dy <= radius * radius) {
+                    SDL_RenderDrawPoint(engine->m_renderer, drawX + dx, drawY + dy);
+                }
+            }
+        }
+    }
+    if (Sprite_isSaying(s)) {
+        int bubbleX = drawX + 20;
+        int bubbleY = drawY - 40;
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_Rect bubble = {bubbleX - 5, bubbleY - 5, 100, 25};
+        SDL_RenderFillRect(engine->m_renderer, &bubble);
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &bubble);
+        drawText(engine, s->sayText, bubbleX, bubbleY, {0, 0, 0, 255});
+    } else if (Sprite_isThinking(s)) {
+        int bubbleX = drawX + 20;
+        int bubbleY = drawY - 40;
+        SDL_SetRenderDrawColor(engine->m_renderer, 220, 220, 220, 255);
+        SDL_Rect bubble = {bubbleX - 5, bubbleY - 5, 100, 25};
+        SDL_RenderFillRect(engine->m_renderer, &bubble);
+        drawCircle(engine, {bubbleX - 15, bubbleY + 10, 8, 8}, {220, 220, 220, 255});
+        drawCircle(engine, {bubbleX - 25, bubbleY + 20, 5, 5}, {220, 220, 220, 255});
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &bubble);
+        drawText(engine, s->thinkText, bubbleX, bubbleY, {0, 0, 0, 255});
+    }
+    if (s == &engine->sprites[engine->activeSpriteIndex]) {
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 0, 100);
+        SDL_Rect border = {drawX - 30, drawY - 30, 60, 60};
+        SDL_RenderDrawRect(engine->m_renderer, &border);
+    }
+}
+
+
 
 void renderFileMenu(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
