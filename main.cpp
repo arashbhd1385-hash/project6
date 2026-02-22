@@ -2378,6 +2378,20 @@ void renderFileMenu(struct ScratchEngine *engine) {
     }
 }
 
+void renderCategoryButtons(struct ScratchEngine *engine) {
+    for (auto &cat: categories) {
+        drawCircle(engine, cat.buttonRect, cat.color);
+        if (cat.category == engine->activeCategory) {
+            SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+            SDL_Rect border = {cat.buttonRect.x - 2, cat.buttonRect.y - 2,
+                               cat.buttonRect.w + 4, cat.buttonRect.h + 4};
+            SDL_RenderDrawRect(engine->m_renderer, &border);
+        }
+        drawText(engine, cat.name, cat.buttonRect.x + cat.buttonRect.w / 2,
+                 cat.buttonRect.y + cat.buttonRect.h + 15, {255, 255, 255, 255}, true);
+    }
+}
+
 int main() {
 
     return 0;
