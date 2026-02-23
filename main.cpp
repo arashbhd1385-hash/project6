@@ -3331,8 +3331,24 @@ bool showSavePrompt(struct ScratchEngine *engine) {
     }
     return cancelled;
 }
-
-
+string openImageFileDialog() {
+    char buf[1024] = {0};
+#ifdef __linux__
+    FILE* f = popen("zenity --file-selection --file-filter='Images | *.png *.jpg *.jpeg *.bmp' 2>/dev/null", "r");
+    if (f) { fgets(buf, sizeof(buf), f); pclose(f); }
+#elif defined(_WIN32)
+    FILE *f = popen(
+            "powershell -command \"Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.OpenFileDialog; $d.Filter='Images|*.png;*.jpg;*.jpeg;*.bmp'; if($d.ShowDialog() -eq 'OK'){$d.FileName}\"",
+            "r");
+    if (f) {
+        fgets(buf, sizeof(buf), f);
+        pclose(f);
+    }
+#endif
+    string s(buf);
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
+    return s;
+}
 
 
 void renderFileMenu(struct ScratchEngine *engine) {
