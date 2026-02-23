@@ -3349,6 +3349,117 @@ string openImageFileDialog() {
     while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
     return s;
 }
+void handleFileMenuAction(struct ScratchEngine *engine, int id) {
+    switch (id) {
+        case 201: {
+            bool cancelled = showSavePrompt(engine);
+            if (!cancelled) {
+                newProject(engine);
+                engine->showFileMenu = false;
+            }
+            break;
+        }
+        case 202: {
+            saveProject(engine);
+            engine->showFileMenu = false;
+            break;
+        }
+        case 203: {
+            string path = openLoadFileDialog();
+            if (path.empty()) {
+                engine->showFileMenu = false;
+                break;
+            }
+            ifstream file(path);
+            if (!file.is_open()) {
+                cout << "Error: Could not load project! File not found." << endl;
+                engine->showFileMenu = false;
+                break;
+            }
+            for (auto block: engine->codeBlocks) Block_destroy(block);
+            engine->codeBlocks.clear();
+            engine->globalVariables.clear();
+            string section;
+            map<int, Block *> loadedBlocks;
+            map<int, int> nextIds, prevIds;
+            string line;
+            while (getline(file, line)) {
+                if (line == "GLOBALS") {
+                    section = "GLOBALS";
+                    continue;
+                }
+                if (line == "SPRITES") {
+                    section = "SPRITES";
+                    continue;
+                }
+                if (line == "BLOCKS") {
+                    section = "BLOCKS";
+                    continue;
+                }
+                if (line == "END") break;
+                stringstream ss(line);
+                string token;
+                vector<string> parts;
+                while (getline(ss, token, '|')) parts.push_back(token);
+                if (section == "GLOBALS" && parts.size() >= 3 &&
+                    parts[0] == "VAR") { engine->globalVariables[parts[1]] = stof(parts[2]); }
+                if (section == "BLOCKS" && parts.size() >= 9 && parts[0] == "BLOCK") {
+                    int id = stoi(parts[1]);
+                    int type = stoi(parts[2]);
+                    float value = stof(parts[3]);
+                    string textData = parts[4];
+                    int rx = stoi(parts[5]);
+                    int ry = stoi(parts[6]);
+                    int prevId = stoi(parts[7]);
+                    int nextId = stoi(parts[8]);
+                    string inputTxt = parts.size() >= 10 ? parts[9] : "0";
+                    int parentId = parts.size() >= 11 ? stoi(parts[10]) : -1;
+                    Block *b = Block_create(type, value, textData);
+                    b->rect.x = rx;
+                    b->rect.y = ry;
+                    strncpy(b->inputText, inputTxt.c_str(), 31);
+                    b->inputText[31] = '\0';
+                    loadedBlocks[id] = b;
+                    nextIds[id] = nextId;
+                    prevIds[id] = prevId;
+                    if (parentId >= 0) {
+                        nextIds[id] = nextId;
+                        prevIds[id] = -(parentId + 1000);
+                    }
+                }
+            }
+            file.close();
+            for (auto &pair: loadedBlocks) {
+                Block *b = pair.second;
+                int id = pair.first;
+                if (nextIds[id] >= 0 && loadedBlocks.count(nextIds[id])) { b->next = loadedBlocks[nextIds[id]]; }
+                if (prevIds[id] >= 0 && loadedBlocks.count(prevIds[id])) {
+                    b->prev = loadedBlocks[prevIds[id]];
+                } else if (prevIds[id] < -999) {
+                    int parentId = -(prevIds[id] + 1000);
+                    if (loadedBlocks.count(parentId)) {
+                        Block *parentBlock = loadedBlocks[parentId];
+                        parentBlock->children.push_back(b);
+                        b->parent = parentBlock;
+                    }
+                }
+            }
+            for (auto &pair: loadedBlocks) {
+                Block *b = pair.second;
+                if (!b->prev && !b->parent) { engine->codeBlocks.push_back(b); }
+            }
+            cout << "Project loaded successfully! Blocks: " << loadedBlocks.size() << endl;
+            engine->showFileMenu = false;
+            break;
+        }
+    }
+}
+
+struct SpriteOption {
+    string filename;
+    string label;
+};
+
 
 
 void renderFileMenu(struct ScratchEngine *engine) {
