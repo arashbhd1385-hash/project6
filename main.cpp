@@ -3752,6 +3752,49 @@ void showBackgroundPicker(struct ScratchEngine *engine) {
     }
 }
 
+void handleAction(struct ScratchEngine *engine, int id) {
+    if (id >= 200) {
+        handleFileMenuAction(engine, id);
+        return;
+    }
+    if (id >= 1000 && id < 1000 + categories.size()) {
+        engine->activeCategory = id - 1000;
+        engine->blocksScrollOffset = 0;
+        engine->blocksMaxScroll = 0;
+        if (engine->paletteBlocks.find(engine->activeCategory) != engine->paletteBlocks.end()) {
+            int totalHeight = 0;
+            for (auto block: engine->paletteBlocks[engine->activeCategory]) { totalHeight += block->rect.h + 5; }
+            engine->blocksMaxScroll = max(0, totalHeight - engine->blocksAreaRect.h + 20);
+        }
+        return;
+    }
+    if (engine->sprites.empty()) return;
+    switch (id) {
+        case 101: {
+            showSpritePicker(engine);
+            break;
+        }
+        case 102:
+            if (engine->sprites.size() > 1) {
+                string spriteName = engine->sprites[engine->activeSpriteIndex].name;
+                logEvent(engine, "WARNING", 0, "DELETE_SPRITE",
+                         "Deleting sprite: " + spriteName);
+                Sprite_destroy(&engine->sprites[engine->activeSpriteIndex]);
+                engine->sprites.erase(engine->sprites.begin() + engine->activeSpriteIndex);
+                engine->activeSpriteIndex = 0;
+            } else {
+                logEvent(engine, "WARNING", 0, "DELETE_SPRITE",
+                         "Cannot delete last sprite");
+            }
+            break;
+        case 103:
+            engine->activeSpriteIndex = (engine->activeSpriteIndex + 1) % engine->sprites.size();
+            break;
+        case 104:
+            showBackgroundPicker(engine);
+            break;
+    }
+}
 void renderFileMenu(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
     SDL_RenderFillRect(engine->m_renderer, &engine->fileMenuRect);
