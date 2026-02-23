@@ -3459,8 +3459,150 @@ struct SpriteOption {
     string filename;
     string label;
 };
+void showSpritePicker(struct ScratchEngine *engine) {
+    static const SpriteOption OPTIONS[] = {
+            {"files/cat.png",  "Cat"},
+            {"files/bat.png",  "Bat"},
+            {"files/dog.png",  "Dog"},
+            {"files/frog.png", "Frog"}
+    };
+    const int N = 4;
+    SDL_Texture *thumbs[4] = {nullptr, nullptr, nullptr, nullptr};
+    for (int i = 0; i < N; i++) {
+        SDL_Surface *s = IMG_Load(OPTIONS[i].filename.c_str());
+        if (s) {
+            thumbs[i] = SDL_CreateTextureFromSurface(engine->m_renderer, s);
+            SDL_FreeSurface(s);
+        }
+    }
+    const int THUMB_W = 90;
+    const int THUMB_H = 90;
+    const int PAD = 16;
+    const int TITLE_H = 40;
+    const int BOTTOM_H = 50;
+    int totalSlots = N + 1;
+    int POPUP_W = PAD + totalSlots * (THUMB_W + PAD) + 10;
+    POPUP_W = max(POPUP_W, 360);
+    int POPUP_H = TITLE_H + PAD + THUMB_H + 20 + BOTTOM_H;
+    int popX = (engine->winWidth - POPUP_W) / 2;
+    int popY = (engine->winHeight - POPUP_H) / 2;
+    bool picking = true;
+    SDL_Event ev;
+    while (picking) {
+        SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 160);
+        SDL_Rect overlay = {0, 0, engine->winWidth, engine->winHeight};
+        SDL_RenderFillRect(engine->m_renderer, &overlay);
+        SDL_SetRenderDrawColor(engine->m_renderer, 50, 50, 70, 255);
+        SDL_Rect popup = {popX, popY, POPUP_W, POPUP_H};
+        SDL_RenderFillRect(engine->m_renderer, &popup);
+        SDL_SetRenderDrawColor(engine->m_renderer, 150, 180, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &popup);
+        drawText(engine, "Choose Sprite", popX + POPUP_W / 2, popY + 10, {255, 255, 255, 255}, true);
+        int startX = popX + PAD;
+        int startY = popY + TITLE_H + PAD;
+        SDL_Rect thumbRects[4];
+        for (int i = 0; i < N; i++) {
+            thumbRects[i] = {startX + i * (THUMB_W + PAD), startY, THUMB_W, THUMB_H};
+            SDL_SetRenderDrawColor(engine->m_renderer, 70, 70, 90, 255);
+            SDL_RenderFillRect(engine->m_renderer, &thumbRects[i]);
+            if (thumbs[i]) { SDL_RenderCopy(engine->m_renderer, thumbs[i], NULL, &thumbRects[i]); }
+            SDL_SetRenderDrawColor(engine->m_renderer, 200, 200, 255, 200);
+            SDL_RenderDrawRect(engine->m_renderer, &thumbRects[i]);
+            drawText(engine, OPTIONS[i].label,
+                     thumbRects[i].x + THUMB_W / 2 - (int) OPTIONS[i].label.size() * 3,
+                     thumbRects[i].y + THUMB_H + 4,
+                     {200, 220, 255, 255});
+        }
 
-
+        SDL_Rect plusRect = {startX + N * (THUMB_W + PAD), startY, THUMB_W, THUMB_H};
+        SDL_SetRenderDrawColor(engine->m_renderer, 40, 120, 60, 255);
+        SDL_RenderFillRect(engine->m_renderer, &plusRect);
+        SDL_SetRenderDrawColor(engine->m_renderer, 100, 255, 140, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &plusRect);
+        int px = plusRect.x + plusRect.w / 2;
+        int py = plusRect.y + plusRect.h / 2;
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawLine(engine->m_renderer, px - 16, py, px + 16, py);
+        SDL_RenderDrawLine(engine->m_renderer, px - 15, py - 1, px + 15, py - 1);
+        SDL_RenderDrawLine(engine->m_renderer, px, py - 16, px, py + 16);
+        SDL_RenderDrawLine(engine->m_renderer, px + 1, py - 15, px + 1, py + 15);
+        drawText(engine, "Upload", plusRect.x + THUMB_W / 2 - 18, plusRect.y + THUMB_H + 4, {100, 255, 140, 255});
+        SDL_Rect cancelBtn = {popX + POPUP_W / 2 - 40, popY + POPUP_H - 38, 80, 28};
+        SDL_SetRenderDrawColor(engine->m_renderer, 180, 60, 60, 255);
+        SDL_RenderFillRect(engine->m_renderer, &cancelBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &cancelBtn);
+        drawText(engine, "Cancel", cancelBtn.x + cancelBtn.w / 2, cancelBtn.y + cancelBtn.h / 2, {255, 255, 255, 255},
+                 true);
+        SDL_RenderPresent(engine->m_renderer);
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT) {
+                engine->running = false;
+                picking = false;
+            }
+            if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) picking = false;
+            if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                int mx = ev.button.x, my = ev.button.y;
+                if (isClickInRect(mx, my, cancelBtn)) {
+                    picking = false;
+                    break;
+                }
+                if (isClickInRect(mx, my, plusRect)) {
+                    string imgPath = openImageFileDialog();
+                    if (!imgPath.empty()) {
+                        SDL_Surface *surf = IMG_Load(imgPath.c_str());
+                        if (surf) {
+                            size_t slashPos = imgPath.find_last_of("/\\");
+                            string fname = (slashPos != string::npos) ? imgPath.substr(slashPos + 1) : imgPath;
+                            size_t dotPos = fname.rfind('.');
+                            string spriteName = (dotPos != string::npos) ? fname.substr(0, dotPos) : fname;
+                            spriteName += to_string(engine->sprites.size() + 1);
+                            struct Sprite newSprite;
+                            Sprite_init(&newSprite, spriteName,
+                                        engine->catPanelRect.w / 2 + rand() % 80 - 40,
+                                        engine->catPanelRect.h / 2 + rand() % 80 - 40);
+                            newSprite.variables["my variable"] = 0;
+                            newSprite.variableVisible["my variable"] = true;
+                            newSprite.currentCostume = imgPath;
+                            newSprite.costume = SDL_CreateTextureFromSurface(engine->m_renderer, surf);
+                            SDL_SetTextureBlendMode(newSprite.costume, SDL_BLENDMODE_BLEND);
+                            SDL_FreeSurface(surf);
+                            engine->sprites.push_back(newSprite);
+                            engine->activeSpriteIndex = (int) engine->sprites.size() - 1;
+                        }
+                    }
+                    picking = false;
+                    break;
+                }
+                for (int i = 0; i < N; i++) {
+                    if (isClickInRect(mx, my, thumbRects[i])) {
+                        string newName = OPTIONS[i].label + to_string(engine->sprites.size() + 1);
+                        struct Sprite newSprite;
+                        Sprite_init(&newSprite, newName,
+                                    engine->catPanelRect.w / 2 + rand() % 80 - 40,
+                                    engine->catPanelRect.h / 2 + rand() % 80 - 40);
+                        newSprite.variables["my variable"] = 0;
+                        newSprite.variableVisible["my variable"] = true;
+                        newSprite.currentCostume = OPTIONS[i].filename;
+                        SDL_Surface *surf = IMG_Load(OPTIONS[i].filename.c_str());
+                        if (surf) {
+                            newSprite.costume = SDL_CreateTextureFromSurface(engine->m_renderer, surf);
+                            SDL_SetTextureBlendMode(newSprite.costume, SDL_BLENDMODE_BLEND);
+                            SDL_FreeSurface(surf);
+                        }
+                        engine->sprites.push_back(newSprite);
+                        engine->activeSpriteIndex = (int) engine->sprites.size() - 1;
+                        picking = false;
+                        break;
+                    }
+                }
+            }
+        }
+        SDL_Delay(16);
+    }
+    for (int i = 0; i < N; i++) { if (thumbs[i]) SDL_DestroyTexture(thumbs[i]); }
+}
 
 void renderFileMenu(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
