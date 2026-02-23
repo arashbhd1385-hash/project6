@@ -3603,6 +3603,154 @@ void showSpritePicker(struct ScratchEngine *engine) {
     }
     for (int i = 0; i < N; i++) { if (thumbs[i]) SDL_DestroyTexture(thumbs[i]); }
 }
+string openAudioFileDialog() {
+    char buf[1024] = {0};
+#ifdef __linux__
+    FILE* f = popen("zenity --file-selection --file-filter='Audio | *.wav *.mp3 *.ogg *.flac' 2>/dev/null", "r");
+    if (f) { fgets(buf, sizeof(buf), f); pclose(f); }
+#elif defined(_WIN32)
+    FILE *f = popen(
+            "powershell -command \"Add-Type -AssemblyName System.Windows.Forms; $d=New-Object System.Windows.Forms.OpenFileDialog; $d.Filter='Audio|*.wav;*.mp3;*.ogg;*.flac'; if($d.ShowDialog() -eq \'OK\'){$d.FileName}\"",
+            "r");
+    if (f) {
+        fgets(buf, sizeof(buf), f);
+        pclose(f);
+    }
+#endif
+    string s(buf);
+    while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
+    return s;
+}
+
+void showBackgroundPicker(struct ScratchEngine *engine) {
+    const int THUMB_W = 100;
+    const int THUMB_H = 80;
+    const int PAD = 16;
+    const int TITLE_H = 40;
+    const int PLUS_W = 50;
+    const int PLUS_H = 80;
+    const int BOTTOM_H = 50;
+    int numBgs = (int) engine->backgroundTextures.size();
+    int totalSlots = numBgs + 1;
+    int POPUP_W = PAD + totalSlots * (THUMB_W + PAD) + 10;
+    POPUP_W = max(POPUP_W, 360);
+    int POPUP_H = TITLE_H + PAD + THUMB_H + 20 + BOTTOM_H;
+    int popX = (engine->winWidth - POPUP_W) / 2;
+    int popY = (engine->winHeight - POPUP_H) / 2;
+    bool picking = true;
+    SDL_Event ev;
+    while (picking) {
+        numBgs = (int) engine->backgroundTextures.size();
+        totalSlots = numBgs + 1;
+        POPUP_W = PAD + totalSlots * (THUMB_W + PAD) + 10;
+        POPUP_W = max(POPUP_W, 360);
+        popX = (engine->winWidth - POPUP_W) / 2;
+        SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 160);
+        SDL_Rect overlay = {0, 0, engine->winWidth, engine->winHeight};
+        SDL_RenderFillRect(engine->m_renderer, &overlay);
+        SDL_SetRenderDrawColor(engine->m_renderer, 50, 50, 60, 255);
+        SDL_Rect popup = {popX, popY, POPUP_W, POPUP_H};
+        SDL_RenderFillRect(engine->m_renderer, &popup);
+        SDL_SetRenderDrawColor(engine->m_renderer, 200, 200, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &popup);
+        drawText(engine, "Choose Background", popX + POPUP_W / 2 - 70, popY + 10, {255, 255, 255, 255});
+        int startY = popY + TITLE_H + PAD;
+        vector<SDL_Rect> thumbRects(numBgs);
+        for (int i = 0; i < numBgs; i++) {
+            thumbRects[i] = {popX + PAD + i * (THUMB_W + PAD), startY, THUMB_W, THUMB_H};
+            if (i == engine->currentBackgroundIndex) {
+                SDL_SetRenderDrawColor(engine->m_renderer, 100, 200, 255, 255);
+                SDL_Rect hl = {thumbRects[i].x - 3, thumbRects[i].y - 3, THUMB_W + 6, THUMB_H + 6};
+                SDL_RenderFillRect(engine->m_renderer, &hl);
+            }
+            SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 100, 255);
+            SDL_RenderFillRect(engine->m_renderer, &thumbRects[i]);
+            if (engine->backgroundTextures[i]) {
+                SDL_RenderCopy(engine->m_renderer, engine->backgroundTextures[i], NULL, &thumbRects[i]);
+            } else {
+                SDL_SetRenderDrawColor(engine->m_renderer, 120, 120, 120, 255);
+                SDL_RenderFillRect(engine->m_renderer, &thumbRects[i]);
+                drawText(engine, "No img", thumbRects[i].x + 10, thumbRects[i].y + 30, {200, 200, 200, 255});
+            }
+            SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 200);
+            SDL_RenderDrawRect(engine->m_renderer, &thumbRects[i]);
+            string label = (i == 0) ? "Default" : "BG " + to_string(i);
+            drawText(engine, label, thumbRects[i].x + THUMB_W / 2 - (int) label.size() * 3,
+                     thumbRects[i].y + THUMB_H + 4, {200, 220, 255, 255});
+        }
+        SDL_Rect plusRect = {popX + PAD + numBgs * (THUMB_W + PAD), startY, THUMB_W, THUMB_H};
+        SDL_SetRenderDrawColor(engine->m_renderer, 40, 120, 60, 255);
+        SDL_RenderFillRect(engine->m_renderer, &plusRect);
+        SDL_SetRenderDrawColor(engine->m_renderer, 100, 255, 140, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &plusRect);
+        int px = plusRect.x + plusRect.w / 2;
+        int py = plusRect.y + plusRect.h / 2;
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawLine(engine->m_renderer, px - 16, py, px + 16, py);
+        SDL_RenderDrawLine(engine->m_renderer, px - 15, py - 1, px + 15, py - 1);
+        SDL_RenderDrawLine(engine->m_renderer, px, py - 16, px, py + 16);
+        SDL_RenderDrawLine(engine->m_renderer, px + 1, py - 15, px + 1, py + 15);
+        drawText(engine, "Upload", plusRect.x + THUMB_W / 2 - 18, plusRect.y + THUMB_H + 4, {100, 255, 140, 255});
+        SDL_Rect cancelBtn = {popX + POPUP_W / 2 - 40, popY + POPUP_H - 38, 80, 28};
+        SDL_SetRenderDrawColor(engine->m_renderer, 180, 60, 60, 255);
+        SDL_RenderFillRect(engine->m_renderer, &cancelBtn);
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &cancelBtn);
+        drawText(engine, "Cancel", cancelBtn.x + 10, cancelBtn.y + 6, {255, 255, 255, 255});
+        SDL_RenderPresent(engine->m_renderer);
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT) {
+                engine->running = false;
+                picking = false;
+            }
+            if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) { picking = false; }
+            if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                int mx = ev.button.x;
+                int my = ev.button.y;
+                if (isClickInRect(mx, my, cancelBtn)) {
+                    picking = false;
+                    break;
+                }
+                if (isClickInRect(mx, my, plusRect)) {
+                    string imgPath = openImageFileDialog();
+                    if (!imgPath.empty()) {
+                        SDL_Surface *surf = IMG_Load(imgPath.c_str());
+                        if (surf) {
+                            SDL_Texture *newTex = SDL_CreateTextureFromSurface(engine->m_renderer, surf);
+                            SDL_FreeSurface(surf);
+                            if (newTex) {
+                                engine->backgroundTextures.push_back(newTex);
+                                size_t slashPos = imgPath.find_last_of("/\\");
+                                string fname = (slashPos != string::npos) ? imgPath.substr(slashPos + 1) : imgPath;
+                                size_t dotPos = fname.rfind('.');
+                                if (dotPos != string::npos) fname = fname.substr(0, dotPos);
+                                engine->backgrounds.push_back(fname);
+                                int newIdx = (int) engine->backgroundTextures.size() - 1;
+                                engine->backgroundTexture = engine->backgroundTextures[newIdx];
+                                engine->currentBackgroundIndex = newIdx;
+                                engine->currentBackgroundName = fname;
+                                picking = false;
+                            }
+                        }
+                    }
+                    break;
+                }
+                for (int i = 0; i < numBgs; i++) {
+                    if (isClickInRect(mx, my, thumbRects[i])) {
+                        engine->backgroundTexture = engine->backgroundTextures[i];
+                        engine->currentBackgroundIndex = i;
+                        engine->currentBackgroundName = (i < (int) engine->backgrounds.size()) ? engine->backgrounds[i]
+                                                                                               : ("BG " + to_string(i));
+                        picking = false;
+                        break;
+                    }
+                }
+            }
+        }
+        SDL_Delay(16);
+    }
+}
 
 void renderFileMenu(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
