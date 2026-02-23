@@ -3795,6 +3795,156 @@ void handleAction(struct ScratchEngine *engine, int id) {
             break;
     }
 }
+void showColorPickerPopup(struct ScratchEngine *engine, Block *block) {
+    struct ColorOption {
+        SDL_Color color;
+        const char *name;
+    };
+    static const ColorOption colors[10] = {
+            {{255, 0,   0,   255}, "Red"},
+            {{255, 128, 0,   255}, "Orange"},
+            {{255, 255, 0,   255}, "Yellow"},
+            {{0,   200, 0,   255}, "Green"},
+            {{0,   128, 255, 255}, "Blue"},
+            {{0,   200, 200, 255}, "Cyan"},
+            {{128, 0,   255, 255}, "Purple"},
+            {{255, 0,   200, 255}, "Pink"},
+            {{255, 255, 255, 255}, "White"},
+            {{0,   0,   0,   255}, "Black"},
+    };
+    const int POPUP_W = 340;
+    const int POPUP_H = 120;
+    int popX = (engine->winWidth - POPUP_W) / 2;
+    int popY = (engine->winHeight - POPUP_H) / 2;
+    bool picking = true;
+    SDL_Event ev;
+    while (picking) {
+        SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 160);
+        SDL_Rect overlay = {0, 0, engine->winWidth, engine->winHeight};
+        SDL_RenderFillRect(engine->m_renderer, &overlay);
+        SDL_SetRenderDrawColor(engine->m_renderer, 40, 40, 55, 255);
+        SDL_Rect popup = {popX, popY, POPUP_W, POPUP_H};
+        SDL_RenderFillRect(engine->m_renderer, &popup);
+        SDL_SetRenderDrawColor(engine->m_renderer, 15, 189, 140, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &popup);
+        drawText(engine, "Choose pen color:", popX + 8, popY + 8, {255, 255, 255, 255});
+        int sw = 26, sh = 26, pad = 4;
+        int startX = popX + 8, startY = popY + 30;
+        SDL_Rect swatchRects[10];
+        for (int i = 0; i < 10; i++) {
+            swatchRects[i] = {startX + i * (sw + pad), startY, sw, sh};
+            SDL_SetRenderDrawColor(engine->m_renderer, colors[i].color.r, colors[i].color.g, colors[i].color.b, 255);
+            SDL_RenderFillRect(engine->m_renderer, &swatchRects[i]);
+            SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 180);
+            SDL_RenderDrawRect(engine->m_renderer, &swatchRects[i]);
+            drawText(engine, string(colors[i].name).substr(0, 3),
+                     swatchRects[i].x + sw / 2 - 8, swatchRects[i].y + sh + 2,
+                     {200, 200, 200, 255});
+        }
+        SDL_Rect cancelBtn = {popX + POPUP_W / 2 - 30, popY + POPUP_H - 22, 60, 18};
+        SDL_SetRenderDrawColor(engine->m_renderer, 180, 60, 60, 255);
+        SDL_RenderFillRect(engine->m_renderer, &cancelBtn);
+        drawText(engine, "Cancel", cancelBtn.x + 4, cancelBtn.y + 2, {255, 255, 255, 255});
+        SDL_RenderPresent(engine->m_renderer);
+        while (SDL_PollEvent(&ev)) {
+            if (ev.type == SDL_QUIT) {
+                engine->running = false;
+                picking = false;
+            }
+            if (ev.type == SDL_KEYDOWN && ev.key.keysym.sym == SDLK_ESCAPE) picking = false;
+            if (ev.type == SDL_MOUSEBUTTONDOWN && ev.button.button == SDL_BUTTON_LEFT) {
+                int mx = ev.button.x, my = ev.button.y;
+                if (isClickInRect(mx, my, cancelBtn)) {
+                    picking = false;
+                    break;
+                }
+                for (int i = 0; i < 10; i++) {
+                    if (isClickInRect(mx, my, swatchRects[i])) {
+                        if (!engine->sprites.empty()) {
+                            engine->sprites[engine->activeSpriteIndex].penColor = colors[i].color;
+                            block->value = (float) i * 25.5f;
+                            block->textData = "set pen color to " + string(colors[i].name);
+                        }
+                        picking = false;
+                        break;
+                    }
+                }
+            }
+        }
+        SDL_Delay(16);
+    }
+}
+
+void showSpriteRenameDialog(struct ScratchEngine *engine, int spriteIdx) {
+    const int POPUP_W = 360, POPUP_H = 150;
+    int popX = (engine->winWidth - POPUP_W) / 2;
+    int popY = (engine->winHeight - POPUP_H) / 2;
+    char newName[64] = {0};
+    strncpy(newName, engine->sprites[spriteIdx].name.c_str(), 63);
+    bool editing = true;
+    SDL_StartTextInput();
+    SDL_Event rEv;
+    while (editing) {
+        SDL_SetRenderDrawBlendMode(engine->m_renderer, SDL_BLENDMODE_BLEND);
+        SDL_SetRenderDrawColor(engine->m_renderer, 0, 0, 0, 160);
+        SDL_Rect overlay = {0, 0, engine->winWidth, engine->winHeight};
+        SDL_RenderFillRect(engine->m_renderer, &overlay);
+        SDL_SetRenderDrawColor(engine->m_renderer, 50, 50, 70, 255);
+        SDL_Rect popup = {popX, popY, POPUP_W, POPUP_H};
+        SDL_RenderFillRect(engine->m_renderer, &popup);
+        SDL_SetRenderDrawColor(engine->m_renderer, 100, 180, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &popup);
+        drawText(engine, "Rename Sprite", popX + POPUP_W / 2, popY + 14, {255, 255, 255, 255}, true);
+        SDL_Rect inputR = {popX + 20, popY + 40, POPUP_W - 40, 34};
+        SDL_SetRenderDrawColor(engine->m_renderer, 255, 255, 255, 255);
+        SDL_RenderFillRect(engine->m_renderer, &inputR);
+        SDL_SetRenderDrawColor(engine->m_renderer, 100, 180, 255, 255);
+        SDL_RenderDrawRect(engine->m_renderer, &inputR);
+        drawText(engine, string(newName) + "|", inputR.x + 6, inputR.y + 9, {30, 30, 30, 255});
+        SDL_Rect okBtn = {popX + 80, popY + POPUP_H - 42, 90, 28};
+        SDL_Rect cancelBtn = {popX + 200, popY + POPUP_H - 42, 80, 28};
+        SDL_SetRenderDrawColor(engine->m_renderer, 60, 140, 220, 255);
+        SDL_RenderFillRect(engine->m_renderer, &okBtn);
+        drawText(engine, "OK", okBtn.x + okBtn.w / 2, okBtn.y + okBtn.h / 2, {255, 255, 255, 255}, true);
+        SDL_SetRenderDrawColor(engine->m_renderer, 120, 60, 60, 255);
+        SDL_RenderFillRect(engine->m_renderer, &cancelBtn);
+        drawText(engine, "Cancel", cancelBtn.x + cancelBtn.w / 2, cancelBtn.y + cancelBtn.h / 2, {255, 255, 255, 255},
+                 true);
+        SDL_RenderPresent(engine->m_renderer);
+        while (SDL_PollEvent(&rEv)) {
+            if (rEv.type == SDL_QUIT) {
+                engine->running = false;
+                editing = false;
+            }
+            if (rEv.type == SDL_KEYDOWN) {
+                if (rEv.key.keysym.sym == SDLK_ESCAPE) { editing = false; }
+                else if (rEv.key.keysym.sym == SDLK_RETURN && strlen(newName) > 0) {
+                    engine->sprites[spriteIdx].name = string(newName);
+                    editing = false;
+                } else if (rEv.key.keysym.sym == SDLK_BACKSPACE) {
+                    int l = strlen(newName);
+                    if (l > 0) newName[l - 1] = '\0';
+                }
+            }
+            if (rEv.type == SDL_TEXTINPUT) {
+                int l = strlen(newName);
+                if (l < 62) strncat(newName, rEv.text.text, 62 - l);
+            }
+            if (rEv.type == SDL_MOUSEBUTTONDOWN) {
+                int rmx = rEv.button.x, rmy = rEv.button.y;
+                if (isClickInRect(rmx, rmy, okBtn) && strlen(newName) > 0) {
+                    engine->sprites[spriteIdx].name = string(newName);
+                    editing = false;
+                }
+                if (isClickInRect(rmx, rmy, cancelBtn)) editing = false;
+            }
+        }
+        SDL_Delay(16);
+    }
+    SDL_StopTextInput();
+}
+
 void renderFileMenu(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
     SDL_RenderFillRect(engine->m_renderer, &engine->fileMenuRect);
