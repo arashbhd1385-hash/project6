@@ -3331,6 +3331,7 @@ bool showSavePrompt(struct ScratchEngine *engine) {
     }
     return cancelled;
 }
+
 string openImageFileDialog() {
     char buf[1024] = {0};
 #ifdef __linux__
@@ -3349,6 +3350,7 @@ string openImageFileDialog() {
     while (!s.empty() && (s.back() == '\n' || s.back() == '\r' || s.back() == ' ')) s.pop_back();
     return s;
 }
+
 void handleFileMenuAction(struct ScratchEngine *engine, int id) {
     switch (id) {
         case 201: {
@@ -3459,6 +3461,7 @@ struct SpriteOption {
     string filename;
     string label;
 };
+
 void showSpritePicker(struct ScratchEngine *engine) {
     static const SpriteOption OPTIONS[] = {
             {"files/cat.png",  "Cat"},
@@ -3603,6 +3606,7 @@ void showSpritePicker(struct ScratchEngine *engine) {
     }
     for (int i = 0; i < N; i++) { if (thumbs[i]) SDL_DestroyTexture(thumbs[i]); }
 }
+
 string openAudioFileDialog() {
     char buf[1024] = {0};
 #ifdef __linux__
@@ -3795,6 +3799,7 @@ void handleAction(struct ScratchEngine *engine, int id) {
             break;
     }
 }
+
 void showColorPickerPopup(struct ScratchEngine *engine, Block *block) {
     struct ColorOption {
         SDL_Color color;
@@ -3944,6 +3949,7 @@ void showSpriteRenameDialog(struct ScratchEngine *engine, int spriteIdx) {
     }
     SDL_StopTextInput();
 }
+
 void handleDragAndDrop(struct ScratchEngine *engine, SDL_Event &e) {
     if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
         Uint32 currentTime = SDL_GetTicks();
@@ -5002,6 +5008,21 @@ void run(struct ScratchEngine *engine) {
     SDL_Event e;
     while (engine->running) {
         SensingData_update(&engine->sensing);
+        if (!engine->sensing.pendingBroadcasts.empty()) {
+            vector<string> broadcasts = engine->sensing.pendingBroadcasts;
+            engine->sensing.pendingBroadcasts.clear();
+            for (auto &msg: broadcasts) {
+                for (auto block: engine->codeBlocks) {
+                    if (!block->prev && block->type == BLOCK_WHEN_BROADCAST_RECEIVED) {
+                        string rcvMsg = block->inputText[0] != '\0' ? string(block->inputText) : "message1";
+                        if (rcvMsg == msg) {
+                            printf("[INFO] Broadcast receiver triggered in loop: '%s'\n", msg.c_str());
+                            executeBlockChain(engine, block);
+                        }
+                    }
+                }
+            }
+        }
         while (SDL_PollEvent(&e)) {
             if (e.type == SDL_QUIT) {
                 render(engine);
@@ -5026,6 +5047,8 @@ void run(struct ScratchEngine *engine) {
                     engine->greenFlagRect = {engine->catPanelRect.x + 10, engine->catPanelRect.y + 10, 40, 40};
                     engine->stopRect = {engine->catPanelRect.x + 60, engine->catPanelRect.y + 10, 40, 40};
                     engine->pauseRect = {engine->catPanelRect.x + 110, engine->catPanelRect.y + 10, 40, 40};
+                    g_pauseRect = engine->pauseRect;
+                    g_stopRect = engine->stopRect;
                     engine->blocksAreaRect = {engine->blocksPanelRect.x + 45, engine->blocksPanelRect.y + 45,
                                               blocksPanelWidth - 55, engine->winHeight - 200};
                     for (size_t i = 0; i < engine->fileMenuButtons.size(); i++) {
@@ -5065,18 +5088,18 @@ void run(struct ScratchEngine *engine) {
                     }
                 }
             }
-//            handleDragAndDrop(engine, e);
+            handleDragAndDrop(engine, e);
             if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
                 for (auto &btn: engine->buttons) {
                     if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, btn.rect)) {
-//                        handleAction(engine, btn.actionID);
+                        handleAction(engine, btn.actionID);
                         break;
                     }
                 }
                 for (auto &btn: engine->fileMenuButtons) {
                     if (engine->showFileMenu &&
                         isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, btn.rect)) {
-//                        handleAction(engine, btn.actionID);
+                        handleAction(engine, btn.actionID);
                         break;
                     }
                 }
@@ -5088,8 +5111,7 @@ void run(struct ScratchEngine *engine) {
     if (engine->textInputActive) { SDL_StopTextInput(); }
 }
 
-
-int main() {
+int main(int argc, char *argv[]) {
     srand(time(nullptr));
     struct ScratchEngine engine;
     g_engine = &engine;
