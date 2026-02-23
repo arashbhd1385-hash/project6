@@ -3944,6 +3944,675 @@ void showSpriteRenameDialog(struct ScratchEngine *engine, int spriteIdx) {
     }
     SDL_StopTextInput();
 }
+void handleDragAndDrop(struct ScratchEngine *engine, SDL_Event &e) {
+    if (e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT) {
+        Uint32 currentTime = SDL_GetTicks();
+        int mx = engine->sensing.mouseX, my = engine->sensing.mouseY;
+        if (!engine->sprites.empty()) {
+            struct Sprite &s = engine->sprites[engine->activeSpriteIndex];
+            const int SP_X = engine->spritesPanelRect.x;
+            const int SP_Y = engine->spritesPanelRect.y;
+            const int SP_W = engine->spritesPanelRect.w;
+            int fx = SP_X + 6;
+            int fy = SP_Y + 28;
+            int fieldW = (SP_W - 12) / 4;
+            SDL_Rect fields[4] = {
+                    {fx,                    fy, fieldW, 34},
+                    {fx + fieldW + 2,       fy, fieldW, 34},
+                    {fx + (fieldW + 2) * 2, fy, fieldW, 34},
+                    {fx + (fieldW + 2) * 3, fy, fieldW, 34}
+            };
+            for (int fi = 0; fi < 4; fi++) {
+                if (isClickInRect(mx, my, fields[fi])) {
+                    engine->editingParamField = fi + 1;
+                    if (fi == 0) snprintf(engine->editParamText, 64, "%d", (int) s.x);
+                    else if (fi == 1) snprintf(engine->editParamText, 64, "%d", (int) s.y);
+                    else if (fi == 2) snprintf(engine->editParamText, 64, "%d", (int) s.size);
+                    else snprintf(engine->editParamText, 64, "%d", (int) s.angle);
+                    SDL_StartTextInput();
+                    return;
+                }
+            }
+            if (engine->editingParamField != 0) {
+                float val = (float) atof(engine->editParamText);
+                switch (engine->editingParamField) {
+                    case 1:
+                        s.x = val;
+                        break;
+                    case 2:
+                        s.y = val;
+                        break;
+                    case 3:
+                        s.size = max(1.0f, val);
+                        break;
+                    case 4:
+                        s.angle = val;
+                        break;
+                }
+                engine->editingParamField = 0;
+                SDL_StopTextInput();
+            }
+        }
+        for (int i = 0; i < (int) engine->sprites.size(); i++) {
+            if (isClickInRect(mx, my, engine->spriteThumbnailRects[i])) {
+                if (currentTime - engine->lastSpriteClickTime < engine->DOUBLE_CLICK_TIME &&
+                    i == engine->activeSpriteIndex) {
+                    showSpriteRenameDialog(engine, i);
+                    engine->lastSpriteClickTime = 0;
+                    return;
+                }
+                engine->activeSpriteIndex = i;
+                engine->lastSpriteClickTime = currentTime;
+                return;
+            }
+        }
+        for (int i = 0; i < (int) engine->sprites.size(); i++) {
+            if (isClickInRect(mx, my, engine->spriteRects[i])) {
+                engine->activeSpriteIndex = i;
+                return;
+            }
+        }
+        if (!engine->sprites.empty()) {
+            struct Sprite &activeSprite = engine->sprites[engine->activeSpriteIndex];
+            int varRightX = engine->spritesPanelRect.x + engine->spritesPanelRect.w - 4;
+            int varY2 = engine->spritesPanelRect.y + engine->spritesPanelRect.h - 60;
+            for (auto &varPair: engine->globalVariables) {
+                bool visible = true;
+                if (activeSprite.variableVisible.count(varPair.first))
+                    visible = activeSprite.variableVisible[varPair.first];
+                if (visible) {
+                    float v = varPair.second;
+                    char buf2[128];
+                    snprintf(buf2, sizeof(buf2), "%s = %.2f", varPair.first.c_str(), v);
+                    int textW = max(80, (int) (strlen(buf2) + 4) * 8);
+                    SDL_Rect varBg = {varRightX - textW - 8, varY2 - 2, textW + 6, 18};
+                    if (isClickInRect(mx, my, varBg)) {
+                        if (engine->isEditingVarValue && engine->editingVarName == varPair.first) {
+                            float newVal = atof(engine->editVarValueBuf);
+                            engine->globalVariables[varPair.first] = newVal;
+                            if (!engine->sprites.empty())
+                                engine->sprites[engine->activeSpriteIndex].variables[varPair.first] = newVal;
+                            engine->isEditingVarValue = false;
+                            engine->editingVarName = "";
+                            SDL_StopTextInput();
+                        } else {
+                            engine->isEditingVarValue = true;
+                            engine->editingVarName = varPair.first;
+                            char valBuf[32];
+                            if (fabs(v - round(v)) < 0.001f) snprintf(valBuf, sizeof(valBuf), "%d", (int) round(v));
+                            else snprintf(valBuf, sizeof(valBuf), "%.2f", v);
+                            memset(engine->editVarValueBuf, 0, sizeof(engine->editVarValueBuf));
+                            strncpy(engine->editVarValueBuf, valBuf, 63);
+                            SDL_StartTextInput();
+                        }
+                        return;
+                    }
+                    varY2 += 22;
+                }
+            }
+        }
+        bool clickedOnInput = false;
+        for (auto block: engine->codeBlocks) {
+            if (block->type == BLOCK_PLAY_MY_SOUND && block->hasInput &&
+                isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, block->inputRect)) {
+                string audioPath = openAudioFileDialog();
+                if (!audioPath.empty()) {
+                    block->textData = audioPath;
+                    size_t slashPos = audioPath.find_last_of("/\\");
+                    string fname = (slashPos != string::npos) ? audioPath.substr(slashPos + 1) : audioPath;
+                    if (fname.size() > 18) fname = fname.substr(0, 17) + "…";
+                    memset(block->inputText, 0, sizeof(block->inputText));
+                    strncpy(block->inputText, fname.c_str(), 31);
+                }
+                clickedOnInput = true;
+                break;
+            }
+            if (block->hasPenColorPicker &&
+                isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, block->colorPickerRect)) {
+                showColorPickerPopup(engine, block);
+                clickedOnInput = true;
+                break;
+            }
+            if (block->hasSecondInput &&
+                isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, block->inputRect2)) {
+                if (engine->selectedBlock && engine->selectedBlock->isEditingInput)
+                    Block_stopEditing(engine->selectedBlock);
+                if (engine->selectedBlock) engine->selectedBlock->isEditingInput2 = false;
+                block->isEditingInput2 = true;
+                block->isEditingInput = false;
+                engine->selectedBlock = block;
+                SDL_StartTextInput();
+                clickedOnInput = true;
+                break;
+            }
+            if (block->hasInput &&
+                isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, block->inputRect)) {
+                if (engine->selectedBlock && engine->selectedBlock->isEditingInput) {
+                    Block_stopEditing(engine->selectedBlock);
+                }
+                if (engine->selectedBlock) engine->selectedBlock->isEditingInput2 = false;
+                Block_startEditing(block);
+                engine->selectedBlock = block;
+                clickedOnInput = true;
+                break;
+            }
+            if (block->isOperator) {
+                for (auto input: block->operatorInputs) {
+                    if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, input->rect)) {
+                        if (engine->selectedBlock && engine->selectedBlock->isEditingInput) {
+                            Block_stopEditing(engine->selectedBlock);
+                        }
+                        Block_startEditing(input);
+                        engine->selectedBlock = input;
+                        clickedOnInput = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (clickedOnInput) { return; }
+        if (engine->selectedBlock && engine->selectedBlock->isEditingInput) {
+            Block_stopEditing(engine->selectedBlock);
+        }
+        if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, engine->greenFlagRect)) {
+            executeEventBlocks(engine, BLOCK_WHEN_GREEN_FLAG);
+            return;
+        }
+        if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, engine->stopRect)) {
+            engine->sensing.stopRequested = true;
+            engine->sensing.isPaused = false;
+            Mix_HaltChannel(-1);
+            return;
+        }
+        if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, engine->pauseRect)) {
+            engine->sensing.isPaused = !engine->sensing.isPaused;
+            if (!engine->sensing.isPaused) {
+            }
+            return;
+        }
+        if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, engine->fileMenuRect)) {
+            engine->showFileMenu = !engine->showFileMenu;
+            return;
+        }
+        {
+            SDL_Rect makeBlockBtn = {engine->blocksPanelRect.x + 10,
+                                     engine->blocksPanelRect.y + engine->blocksPanelRect.h - 80,
+                                     engine->blocksPanelRect.w - 20, 30};
+            if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, makeBlockBtn)) {
+                showMakeBlockDialog(engine);
+                return;
+            }
+        }
+        if (engine->activeCategory == BLOCK_CATEGORY_VARIABLES) {
+            SDL_Rect makeVarBtn = {engine->blocksPanelRect.x + 10,
+                                   engine->blocksPanelRect.y + engine->blocksPanelRect.h - 115,
+                                   engine->blocksPanelRect.w - 20, 30};
+            if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, makeVarBtn)) {
+                showMakeVariableDialog(engine);
+                return;
+            }
+        }
+        for (size_t i = 0; i < categories.size(); i++) {
+            if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, categories[i].buttonRect)) {
+                engine->activeCategory = categories[i].category;
+                engine->blocksScrollOffset = 0;
+                engine->blocksMaxScroll = 0;
+                if (engine->paletteBlocks.find(engine->activeCategory) != engine->paletteBlocks.end()) {
+                    int totalHeight = 0;
+                    for (auto block: engine->paletteBlocks[engine->activeCategory]) {
+                        totalHeight += block->rect.h + 5;
+                    }
+                    engine->blocksMaxScroll = max(0, totalHeight - engine->blocksAreaRect.h + 20);
+                }
+                return;
+            }
+        }
+        if (engine->sensing.mouseX >= engine->catPanelRect.x &&
+            engine->sensing.mouseX <= engine->catPanelRect.x + engine->catPanelRect.w &&
+            engine->sensing.mouseY >= engine->catPanelRect.y &&
+            engine->sensing.mouseY <= engine->catPanelRect.y + engine->catPanelRect.h) {
+            for (auto &sprite: engine->sprites) {
+                int spriteX = engine->catPanelRect.x + (int) sprite.x;
+                int spriteY = engine->catPanelRect.y + (int) sprite.y;
+                int dist = sqrt((engine->sensing.mouseX - spriteX) * (engine->sensing.mouseX - spriteX) +
+                                (engine->sensing.mouseY - spriteY) * (engine->sensing.mouseY - spriteY));
+                if (dist < 40) {
+                    if (currentTime - engine->lastSpriteClickTime < engine->DOUBLE_CLICK_TIME) {
+                        if (sprite.name == engine->sprites[engine->activeSpriteIndex].name) {
+                            executeEventBlocks(engine, BLOCK_WHEN_SPRITE_CLICKED);
+                        }
+                    }
+                    engine->lastSpriteClickTime = currentTime;
+                    if (sprite.draggable) { Sprite_startDrag(&sprite, engine->sensing.mouseX, engine->sensing.mouseY); }
+                    return;
+                }
+            }
+        }
+        if (engine->paletteBlocks.find(engine->activeCategory) != engine->paletteBlocks.end()) {
+            int yOffset = engine->blocksAreaRect.y - engine->blocksScrollOffset;
+            for (auto block: engine->paletteBlocks[engine->activeCategory]) {
+                SDL_Rect blockRect = {engine->blocksAreaRect.x, yOffset, block->rect.w, block->rect.h};
+                if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, blockRect)) {
+                    Block *newBlock = Block_create(block->type, block->value, block->textData);
+                    newBlock->rect.x = engine->sensing.mouseX - newBlock->rect.w / 2;
+                    newBlock->rect.y = engine->sensing.mouseY - newBlock->rect.h / 2;
+                    newBlock->isDragging = true;
+                    newBlock->dragOffsetX = newBlock->rect.w / 2;
+                    newBlock->dragOffsetY = newBlock->rect.h / 2;
+                    engine->draggingBlock = newBlock;
+                    engine->isDragging = true;
+                    return;
+                }
+                yOffset += block->rect.h + 5;
+            }
+        }
+        for (auto block: engine->codeBlocks) {
+            if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, block->rect)) {
+                if (engine->selectedBlock) { engine->selectedBlock->isSelected = false; }
+                block->isSelected = true;
+                engine->selectedBlock = block;
+                if (currentTime - engine->lastClickTime < engine->DOUBLE_CLICK_TIME) {
+                    Block *chainStart = Block_getFirstInChain(block);
+                    executeBlockChain(engine, chainStart);
+                    engine->lastClickTime = 0;
+                    return;
+                }
+                engine->lastClickTime = currentTime;
+                block->isDragging = true;
+                block->dragOffsetX = engine->sensing.mouseX - block->rect.x;
+                block->dragOffsetY = engine->sensing.mouseY - block->rect.y;
+                engine->draggingBlock = block;
+                engine->isDragging = true;
+                if (block->prev) {
+                    block->prev->next = nullptr;
+                    block->prev = nullptr;
+                }
+                return;
+            }
+        }
+    }
+    if (e.type == SDL_MOUSEMOTION) {
+        for (auto &sprite: engine->sprites) {
+            if (sprite.isDragging) {
+                Sprite_drag(&sprite, engine->sensing.mouseX, engine->sensing.mouseY);
+                return;
+            }
+        }
+        if (engine->isDragging && engine->draggingBlock) {
+            engine->draggingBlock->rect.x = engine->sensing.mouseX - engine->draggingBlock->dragOffsetX;
+            engine->draggingBlock->rect.y = engine->sensing.mouseY - engine->draggingBlock->dragOffsetY;
+            if (engine->draggingBlock->next) {
+                int dy = engine->draggingBlock->rect.y -
+                         (engine->draggingBlock->next->rect.y - engine->draggingBlock->rect.h);
+                Block_shiftChainDown(engine->draggingBlock->next, dy);
+            }
+            engine->targetBlock = nullptr;
+            engine->attachType = ATTACH_NONE;
+            if (engine->sensing.mouseX >= engine->codeAreaRect.x &&
+                engine->sensing.mouseX <= engine->codeAreaRect.x + engine->codeAreaRect.w) {
+                for (auto block: engine->codeBlocks) {
+                    if (block != engine->draggingBlock && !block->isDragging) {
+                        if (abs(block->rect.y - (engine->draggingBlock->rect.y + engine->draggingBlock->rect.h)) < 10) {
+                            engine->targetBlock = block;
+                            engine->attachType = ATTACH_ABOVE;
+                            break;
+                        } else if (abs((block->rect.y + block->rect.h) - engine->draggingBlock->rect.y) < 10) {
+                            engine->targetBlock = block;
+                            engine->attachType = ATTACH_BELOW;
+                            break;
+                        } else if (block->next &&
+                                   engine->draggingBlock->rect.y > block->rect.y + block->rect.h - 10 &&
+                                   engine->draggingBlock->rect.y + engine->draggingBlock->rect.h <
+                                   block->next->rect.y + 10) {
+                            engine->targetBlock = block;
+                            engine->attachType = ATTACH_BETWEEN;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (e.type == SDL_MOUSEBUTTONUP && e.button.button == SDL_BUTTON_LEFT) {
+        for (auto &sprite: engine->sprites) {
+            if (sprite.isDragging) {
+                Sprite_stopDrag(&sprite);
+                return;
+            }
+        }
+        if (engine->draggingBlock) {
+            engine->draggingBlock->isDragging = false;
+            if (engine->sensing.mouseX >= engine->codeAreaRect.x &&
+                engine->sensing.mouseX <= engine->codeAreaRect.x + engine->codeAreaRect.w &&
+                engine->sensing.mouseY >= engine->codeAreaRect.y &&
+                engine->sensing.mouseY <= engine->codeAreaRect.y + engine->codeAreaRect.h) {
+                bool isNewBlock = (find(engine->codeBlocks.begin(), engine->codeBlocks.end(), engine->draggingBlock) ==
+                                   engine->codeBlocks.end());
+                bool droppedAsCondition = false;
+                bool isBoolBlock = (engine->draggingBlock->isOperator ||
+                                    engine->draggingBlock->type == BLOCK_TOUCHING_MOUSE ||
+                                    engine->draggingBlock->type == BLOCK_TOUCHING_EDGE ||
+                                    engine->draggingBlock->type == BLOCK_KEY_PRESSED ||
+                                    engine->draggingBlock->type == BLOCK_MOUSE_DOWN);
+                if (isBoolBlock) {
+                    for (auto loopBlock: engine->codeBlocks) {
+                        if ((loopBlock->type == BLOCK_IF_THEN || loopBlock->type == BLOCK_IF_THEN_ELSE ||
+                             loopBlock->type == BLOCK_WAIT_UNTIL)
+                            && loopBlock != engine->draggingBlock) {
+                            SDL_Rect condBox = {loopBlock->rect.x + 28, loopBlock->rect.y + 7, 100, 26};
+                            if (isClickInRect(engine->sensing.mouseX, engine->sensing.mouseY, condBox)) {
+                                engine->draggingBlock->rect.x = condBox.x;
+                                engine->draggingBlock->rect.y = condBox.y;
+                                engine->draggingBlock->rect.w = condBox.w;
+                                engine->draggingBlock->rect.h = condBox.h;
+                                if (!loopBlock->children.empty() && loopBlock->children[0] != nullptr) {
+                                    loopBlock->children[0] = engine->draggingBlock;
+                                } else {
+                                    loopBlock->children.insert(loopBlock->children.begin(), engine->draggingBlock);
+                                }
+                                if (isNewBlock) { engine->codeBlocks.push_back(engine->draggingBlock); }
+                                droppedAsCondition = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                bool droppedInLoop = droppedAsCondition;
+                if (!droppedAsCondition) {
+                    for (auto loopBlock: engine->codeBlocks) {
+                        if (loopBlock->isLoop && loopBlock != engine->draggingBlock) {
+                            SDL_Rect bodyArea = loopBlock->loopBodyRect;
+                            if (engine->sensing.mouseX >= bodyArea.x &&
+                                engine->sensing.mouseX <= bodyArea.x + bodyArea.w &&
+                                engine->sensing.mouseY >= bodyArea.y &&
+                                engine->sensing.mouseY <= bodyArea.y + bodyArea.h) {
+                                int childY = bodyArea.y + 5;
+                                for (auto existing: loopBlock->children) { childY += existing->rect.h + 5; }
+                                engine->draggingBlock->rect.x = bodyArea.x + 10;
+                                engine->draggingBlock->rect.y = childY;
+                                loopBlock->children.push_back(engine->draggingBlock);
+                                loopBlock->loopBodyRect.h = max(60,
+                                                                childY - bodyArea.y + engine->draggingBlock->rect.h +
+                                                                10);
+                                if (isNewBlock) { engine->codeBlocks.push_back(engine->draggingBlock); }
+                                droppedInLoop = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if (!droppedInLoop) {
+                    if (isNewBlock) {
+                        engine->codeBlocks.push_back(engine->draggingBlock);
+                        ScratchEngine::UndoAction ua;
+                        ua.type = ScratchEngine::UndoAction::ADD_BLOCK;
+                        ua.block = engine->draggingBlock;
+                        ua.prevX = engine->draggingBlock->rect.x;
+                        ua.prevY = engine->draggingBlock->rect.y;
+                        ua.prevParentIdx = -1;
+                        if ((int) engine->undoStack.size() >= engine->MAX_UNDO)
+                            engine->undoStack.erase(engine->undoStack.begin());
+                        engine->undoStack.push_back(ua);
+                    }
+                    if (engine->targetBlock) {
+                        switch (engine->attachType) {
+                            case ATTACH_ABOVE:
+                                Block_attachAbove(engine->draggingBlock, engine->targetBlock);
+                                break;
+                            case ATTACH_BELOW:
+                                Block_attachBelow(engine->targetBlock, engine->draggingBlock);
+                                break;
+                            case ATTACH_BETWEEN: {
+                                Block *nextBlock = engine->targetBlock->next;
+                                Block_attachBelow(engine->targetBlock, engine->draggingBlock);
+                                Block_attachBelow(engine->draggingBlock, nextBlock);
+                            }
+                                break;
+                            default:
+                                break;
+                        }
+                        for (auto block: engine->codeBlocks) {
+                            if (!block->prev) { Block_updateBelowPositions(block); }
+                        }
+                    }
+                }
+            } else {
+                auto it = find(engine->codeBlocks.begin(), engine->codeBlocks.end(), engine->draggingBlock);
+                if (it != engine->codeBlocks.end() && !engine->draggingBlock->prev && !engine->draggingBlock->next) {
+                    engine->codeBlocks.erase(it);
+                    Block_destroy(engine->draggingBlock);
+                }
+            }
+        }
+        engine->draggingBlock = nullptr;
+        engine->targetBlock = nullptr;
+        engine->attachType = ATTACH_NONE;
+        engine->isDragging = false;
+    }
+    if (e.type == SDL_KEYDOWN) {
+        if (e.key.keysym.sym == SDLK_z && (SDL_GetModState() & KMOD_CTRL)) {
+            if (!engine->undoStack.empty()) {
+                auto &ua = engine->undoStack.back();
+                if (ua.type == ScratchEngine::UndoAction::ADD_BLOCK) {
+                    auto it = find(engine->codeBlocks.begin(), engine->codeBlocks.end(), ua.block);
+                    if (it != engine->codeBlocks.end()) {
+                        if (ua.block->prev) ua.block->prev->next = ua.block->next;
+                        if (ua.block->next) ua.block->next->prev = ua.block->prev;
+                        engine->codeBlocks.erase(it);
+                        Block_destroy(ua.block);
+                    }
+                } else if (ua.type == ScratchEngine::UndoAction::MOVE_BLOCK) {
+                    ua.block->rect.x = ua.prevX;
+                    ua.block->rect.y = ua.prevY;
+                }
+                engine->undoStack.pop_back();
+                printf("[INFO] Undo performed\n");
+            }
+            return;
+        }
+        if (engine->selectedBlock && engine->selectedBlock->isEditingInput2) {
+            if (e.key.keysym.sym == SDLK_RETURN || e.key.keysym.sym == SDLK_ESCAPE) {
+                engine->selectedBlock->isEditingInput2 = false;
+                SDL_StopTextInput();
+            } else if (e.key.keysym.sym == SDLK_BACKSPACE) {
+                int len = strlen(engine->selectedBlock->inputText2);
+                if (len > 0) engine->selectedBlock->inputText2[len - 1] = '\0';
+            }
+        } else if (engine->selectedBlock && engine->selectedBlock->isEditingInput) {
+            if (e.key.keysym.sym == SDLK_RETURN) {
+                Block_stopEditing(engine->selectedBlock);
+            } else if (e.key.keysym.sym == SDLK_BACKSPACE) {
+                int len = strlen(engine->selectedBlock->inputText);
+                if (len > 0) { engine->selectedBlock->inputText[len - 1] = '\0'; }
+            } else if (e.key.keysym.sym == SDLK_ESCAPE) {
+                engine->selectedBlock->isEditingInput = false;
+            } else if (e.key.keysym.sym >= SDLK_0 && e.key.keysym.sym <= SDLK_9) {
+                bool isTextBlock = (engine->selectedBlock->type == BLOCK_SAY ||
+                                    engine->selectedBlock->type == BLOCK_THINK ||
+                                    engine->selectedBlock->type == BLOCK_BROADCAST ||
+                                    engine->selectedBlock->type == BLOCK_BROADCAST_AND_WAIT ||
+                                    engine->selectedBlock->type == BLOCK_WHEN_BROADCAST_RECEIVED ||
+                                    engine->selectedBlock->type == BLOCK_ASK_AND_WAIT);
+                if (!isTextBlock) {
+                    int len = strlen(engine->selectedBlock->inputText);
+                    if (len < 31) {
+                        engine->selectedBlock->inputText[len] = '0' + (e.key.keysym.sym - SDLK_0);
+                        engine->selectedBlock->inputText[len + 1] = '\0';
+                    }
+                }
+            } else if (e.key.keysym.sym == SDLK_MINUS && strlen(engine->selectedBlock->inputText) == 0) {
+                engine->selectedBlock->inputText[0] = '-';
+                engine->selectedBlock->inputText[1] = '\0';
+            }
+        } else {
+            if (e.key.keysym.sym == SDLK_DELETE && engine->selectedBlock) {
+                auto it = find(engine->codeBlocks.begin(), engine->codeBlocks.end(), engine->selectedBlock);
+                if (it != engine->codeBlocks.end()) {
+                    if (engine->selectedBlock->prev) { engine->selectedBlock->prev->next = engine->selectedBlock->next; }
+                    if (engine->selectedBlock->next) { engine->selectedBlock->next->prev = engine->selectedBlock->prev; }
+                    engine->codeBlocks.erase(it);
+                    Block_destroy(engine->selectedBlock);
+                    engine->selectedBlock = nullptr;
+                }
+            }
+            string key;
+            switch (e.key.keysym.sym) {
+                case SDLK_SPACE:
+                    key = "space";
+                    break;
+                case SDLK_UP:
+                    key = "up";
+                    break;
+                case SDLK_DOWN:
+                    key = "down";
+                    break;
+                case SDLK_LEFT:
+                    key = "left";
+                    break;
+                case SDLK_RIGHT:
+                    key = "right";
+                    break;
+                default:
+                    if (e.key.keysym.sym >= SDLK_a && e.key.keysym.sym <= SDLK_z) {
+                        key = string(1, 'a' + (e.key.keysym.sym - SDLK_a));
+                    }
+                    break;
+            }
+            if (!key.empty()) { executeEventBlocks(engine, BLOCK_WHEN_KEY_PRESSED, key); }
+            if (e.key.keysym.sym == SDLK_RETURN &&
+                engine->sensing.waitingForAnswer) { engine->sensing.waitingForAnswer = false; }
+        }
+    }
+    if (e.type == SDL_TEXTINPUT && engine->selectedBlock) {
+        char c = e.text.text[0];
+        bool isTextBlock = (engine->selectedBlock->type == BLOCK_SAY ||
+                            engine->selectedBlock->type == BLOCK_SAY_FOR_SECONDS ||
+                            engine->selectedBlock->type == BLOCK_THINK ||
+                            engine->selectedBlock->type == BLOCK_THINK_FOR_SECONDS ||
+                            engine->selectedBlock->type == BLOCK_BROADCAST ||
+                            engine->selectedBlock->type == BLOCK_BROADCAST_AND_WAIT ||
+                            engine->selectedBlock->type == BLOCK_WHEN_BROADCAST_RECEIVED ||
+                            engine->selectedBlock->type == BLOCK_ASK_AND_WAIT);
+        bool isStringOperatorInput = false;
+        for (auto block: engine->codeBlocks) {
+            if (block->isOperator && (block->type == BLOCK_JOIN_STRINGS || block->type == BLOCK_JOIN_STRINGS2 ||
+                                      block->type == BLOCK_LENGTH_OF || block->type == BLOCK_LETTER_OF)) {
+                for (auto inp: block->operatorInputs) {
+                    if (inp == engine->selectedBlock) {
+                        isStringOperatorInput = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (engine->selectedBlock->isEditingInput2) {
+            if (isTextBlock) {
+                int len = strlen(engine->selectedBlock->inputText2);
+                if (len < 31) {
+                    engine->selectedBlock->inputText2[len] = c;
+                    engine->selectedBlock->inputText2[len + 1] = '\0';
+                }
+            } else {
+                int len = strlen(engine->selectedBlock->inputText2);
+                if (len < 31 && ((c >= '0' && c <= '9') || c == '.' || (c == '-' && len == 0))) {
+                    engine->selectedBlock->inputText2[len] = c;
+                    engine->selectedBlock->inputText2[len + 1] = '\0';
+                }
+            }
+        } else if (engine->selectedBlock->isEditingInput) {
+            int len = strlen(engine->selectedBlock->inputText);
+            if (engine->selectedBlock->type == BLOCK_WHEN_KEY_PRESSED) {
+                if (len < 31 && (c >= 'a' && c <= 'z')) {
+                    engine->selectedBlock->inputText[len] = c;
+                    engine->selectedBlock->inputText[len + 1] = '\0';
+                }
+            } else if (isTextBlock || isStringOperatorInput) {
+                if (len < 31 && c >= 32) {
+                    engine->selectedBlock->inputText[len] = c;
+                    engine->selectedBlock->inputText[len + 1] = '\0';
+                }
+            } else if (len < 31 && ((c >= '0' && c <= '9') || c == '.')) {
+                engine->selectedBlock->inputText[len] = c;
+                engine->selectedBlock->inputText[len + 1] = '\0';
+            }
+        }
+    }
+    if (e.type == SDL_TEXTINPUT && engine->editingParamField != 0) {
+        char c = e.text.text[0];
+        int len = strlen(engine->editParamText);
+        if (len < 63 && ((c >= '0' && c <= '9') || c == '-' || c == '.')) {
+            engine->editParamText[len] = c;
+            engine->editParamText[len + 1] = '\0';
+        }
+    }
+    if (e.type == SDL_TEXTINPUT && engine->isEditingVarValue) {
+        char c = e.text.text[0];
+        int len = strlen(engine->editVarValueBuf);
+        if (len < 63 && ((c >= '0' && c <= '9') || c == '-' || c == '.')) {
+            engine->editVarValueBuf[len] = c;
+            engine->editVarValueBuf[len + 1] = '\0';
+        }
+    }
+    if (e.type == SDL_KEYDOWN && engine->isEditingVarValue) {
+        if (e.key.keysym.sym == SDLK_BACKSPACE) {
+            int len = strlen(engine->editVarValueBuf);
+            if (len > 0) engine->editVarValueBuf[len - 1] = '\0';
+        }
+        if (e.key.keysym.sym == SDLK_RETURN || e.key.keysym.sym == SDLK_KP_ENTER) {
+            float newVal = atof(engine->editVarValueBuf);
+            engine->globalVariables[engine->editingVarName] = newVal;
+            if (!engine->sprites.empty())
+                engine->sprites[engine->activeSpriteIndex].variables[engine->editingVarName] = newVal;
+            engine->isEditingVarValue = false;
+            engine->editingVarName = "";
+            SDL_StopTextInput();
+        }
+        if (e.key.keysym.sym == SDLK_ESCAPE) {
+            engine->isEditingVarValue = false;
+            engine->editingVarName = "";
+            SDL_StopTextInput();
+        }
+    }
+    if (e.type == SDL_KEYDOWN && engine->editingParamField != 0) {
+        if (e.key.keysym.sym == SDLK_BACKSPACE) {
+            int len = strlen(engine->editParamText);
+            if (len > 0) engine->editParamText[len - 1] = '\0';
+        }
+        if (e.key.keysym.sym == SDLK_RETURN || e.key.keysym.sym == SDLK_KP_ENTER) {
+            if (!engine->sprites.empty()) {
+                struct Sprite &s = engine->sprites[engine->activeSpriteIndex];
+                float val = (float) atof(engine->editParamText);
+                switch (engine->editingParamField) {
+                    case 1:
+                        s.x = val;
+                        break;
+                    case 2:
+                        s.y = val;
+                        break;
+                    case 3:
+                        s.size = max(1.0f, val);
+                        break;
+                    case 4:
+                        s.angle = val;
+                        break;
+                }
+            }
+            engine->editingParamField = 0;
+            SDL_StopTextInput();
+        }
+        if (e.key.keysym.sym == SDLK_ESCAPE) {
+            engine->editingParamField = 0;
+            SDL_StopTextInput();
+        }
+    }
+    if (e.type == SDL_MOUSEWHEEL) {
+        if (engine->sensing.mouseX >= engine->blocksAreaRect.x &&
+            engine->sensing.mouseX <= engine->blocksAreaRect.x + engine->blocksAreaRect.w) {
+            engine->blocksScrollOffset -= e.wheel.y * 30;
+            engine->blocksScrollOffset = max(0, min(engine->blocksScrollOffset, engine->blocksMaxScroll));
+        }
+    }
+}
 
 void renderFileMenu(struct ScratchEngine *engine) {
     SDL_SetRenderDrawColor(engine->m_renderer, 80, 80, 90, 255);
